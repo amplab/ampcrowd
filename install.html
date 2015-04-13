@@ -11,7 +11,7 @@
   </head>
   <body>
     <section class="page-header">
-      <h1 class="project-name">AMPcrowd</h1>
+      <h1 class="project-name"><a href="amplab.github.io/ampcrowd">AMPcrowd</a></h1>
       <h2 class="project-tagline">A RESTful web service that runs microtasks across multiple crowds, provides quality control techniques, and is easily extensible.</h2>
       <a href="https://github.com/amplab/ampcrowd" class="btn">View on GitHub</a>
       <a href="https://github.com/amplab/ampcrowd/zipball/master" class="btn">Download .zip</a>
@@ -22,7 +22,7 @@
       <h1>
 <a id="ampcrowd" class="anchor" href="#ampcrowd" aria-hidden="true"><span class="octicon octicon-link"></span></a>AMPcrowd: Installation Instructions</h1>
 
-<h2>Install and Set up Postgres</h2>
+<h2><a id="postgres" class="anchor" href="#postgres" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install and Set up Postgres</h2>
 <ol>
 <li>
 <p>Install postgres and libpq-dev:</p>
@@ -64,10 +64,10 @@
 </li>
 </ol>
 
-<h2>Install and RabbitMQ</h2>
+<h2><a id="rabbitmq" class="anchor" href="#rabbitmq" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install and RabbitMQ</h2>
 <div class="highlight highlight-shell"><pre>$ sudo apt-get install rabbitmq-server</pre></div>
 
-<h2>Set up your python environment and install requirements</h2>
+<h2><a id="pythonenv" class="anchor" href="#pythonenv" aria-hidden="true"><span class="octicon octicon-link"></span></a>Set up your python environment and install requirements</h2>
 <ol>
 <li><p>Set up a virtual environment for python development (I like
 <a href="http://virtualenvwrapper.readthedocs.org/en/latest/">http://virtualenvwrapper.readthedocs.org/en/latest/</a>).</p></li>
@@ -76,7 +76,7 @@
 </li>
 </ol>
 
-<h2>Set up Amazon Mechanical Turk access</h2>
+<h2><a id="amt" class="anchor" href="#amt" aria-hidden="true"><span class="octicon octicon-link"></span></a>Set up Amazon Mechanical Turk access</h2>
 <p>(Skip this step if you don't want to run tasks on AMT).
 <ol>
 <li>Create your own private settings file:</li>
@@ -86,7 +86,7 @@
 <code>private_settings.py</code>. <strong>NEVER CHECK THIS FILE INTO THE REPO.</strong></p></li>
 </ol>
 
-<h2>Set up the database and run the server</h2>
+<h2><a id="dbsetup" class="anchor" href="#dbsetup" aria-hidden="true"><span class="octicon octicon-link"></span></a>Set up the database and run the server</h2>
 <ol>
 <li><p>Reset the database:</p>
 <div class="highlight highlight-shell"><pre>$ ./scripts/reset_db.sh</pre></div>
