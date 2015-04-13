@@ -15,6 +15,13 @@ a {
   a:hover {
     text-decoration: underline; }
 
+a.nostyle {
+  color:inherit;
+  text-decoration: inherit;
+  a:hover {
+    text-decoration:inherit; }
+}
+
 .btn {
   display: inline-block;
   margin-bottom: 1rem;
