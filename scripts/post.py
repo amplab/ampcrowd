@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import httplib
 import socket
 import ssl
@@ -29,11 +30,12 @@ class HTTPSHandlerV3(urllib2.HTTPSHandler):
     def https_open(self, req):
         return self.do_open(HTTPSConnectionV3, req)
 
-def send_request(data, crowds, num_requests) :
+def send_request(data, crowds, num_requests, use_ssl) :
 
     # Send request
     params = {'data' : json.dumps(data)}
-    url = 'https://127.0.0.1:8000/crowds/%s/tasks/'
+    scheme = 'https' if use_ssl else 'http'
+    url = scheme + '://127.0.0.1:8000/crowds/%s/tasks/'
     for crowd in crowds:
         for i in range(num_requests):
             response = urllib2.urlopen(url%crowd,
@@ -46,10 +48,11 @@ def send_request(data, crowds, num_requests) :
                 sys.stdout.flush()
 
 # Create batches of task
-def create_tasks(crowds, task_types):
+def create_tasks(crowds, task_types, use_ssl):
 
     # install custom opener
-    urllib2.install_opener(urllib2.build_opener(HTTPSHandlerV3()))
+    if use_ssl:
+        urllib2.install_opener(urllib2.build_opener(HTTPSHandlerV3()))
 
     if 'sa' in task_types:
         num_tasks, num_assignments = task_types['sa']
@@ -73,7 +76,7 @@ def create_tasks(crowds, task_types):
                            't2' : 'This is tweet No.2',
                            't3' : 'This is tweet No.3'}
         # Send request
-        send_request(data, crowds, num_tasks)
+        send_request(data, crowds, num_tasks, use_ssl)
         print "Done!"
 
     if 'er' in task_types:
@@ -96,7 +99,7 @@ def create_tasks(crowds, task_types):
         # This configuration generates one task with two pairs of records.
         data['content'] = {'pair1' : [['5', 'LA'], ['6', 'Berkeley']],
                            'pair2' : [['80', 'London'], ['80.0', 'Londyn']]}
-        send_request(data, crowds, num_tasks)
+        send_request(data, crowds, num_tasks, use_ssl)
         print "Done!"
 
     if 'ft' in task_types:
@@ -121,7 +124,7 @@ def create_tasks(crowds, task_types):
                                    'record': ['San Francisco', 'Mexican']},
                            'ft2': {'title': 'Is this a French restaurant in Texas?',
                                    'record': ['El paso', 'Mediterranean']}}
-        send_request(data, crowds, num_tasks)
+        send_request(data, crowds, num_tasks, use_ssl)
         print "Done!"
 
 def parse_args():
@@ -144,6 +147,8 @@ def parse_args():
                         help=('Number of assignments to require (one number '
                               'for each task type given with -t). Defaults to '
                               'one assignment for each task type.'))
+    parser.add_argument('--ssl', action='store_true',
+                        help='Send requests to the crowd server over ssl.')
     args = parser.parse_args()
 
     if not args.num_tasks:
@@ -167,4 +172,4 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    create_tasks(args.crowds, args.types_map)
+    create_tasks(args.crowds, args.types_map, args.ssl)

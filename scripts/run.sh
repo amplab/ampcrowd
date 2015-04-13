@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Kill old processes
-./stop.sh
+./scripts/stop.sh
 
 # Process options
 
@@ -9,10 +9,10 @@
 if [ "$1" == "-d" ] || [ "$2" == "-d" ]
 then
     export DEVELOP=1
-    python manage.py celeryd -l DEBUG &
+    python ampcrowd/manage.py celeryd -l DEBUG &
 else
     export DEVELOP=0
-    python manage.py celeryd_detach
+    python ampcrowd/manage.py celeryd_detach
 fi
 
 # Enable SSL
@@ -23,6 +23,11 @@ else
     export SSL=0
 fi
 
+# Fire up amqp
+rabbitmq-server -detached
+
 # Run the application
-python manage.py collectstatic --noinput
-gunicorn -c gunicorn_config.py crowd_server.wsgi:application
+python ampcrowd/manage.py collectstatic --noinput
+pushd ampcrowd > /dev/null
+gunicorn -c ../deploy/gunicorn_config.py crowd_server.wsgi:application
+popd > /dev/null

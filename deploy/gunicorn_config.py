@@ -24,4 +24,5 @@ if use_ssl:
     keyfile = "crowd_server/ssl/development.key"
     certfile = "crowd_server/ssl/development.crt"
 
-print debug, use_ssl
+print "Debug mode:", debug
+print "SSL mode:", use_ssl
