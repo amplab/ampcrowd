@@ -22,12 +22,7 @@
       <h1>
 <a id="ampcrowd" class="anchor" href="#ampcrowd" aria-hidden="true"><span class="octicon octicon-link"></span></a>AMPcrowd: Installation Instructions</h1>
 
-<p>Things to do to get up and running:</p>
-
-<ul>
-<li>
-<p>install postgres, and create a user and a DB for this project :</p>
-
+<h2>Install and Set up Postgres</h2>
 <ol>
 <li>
 <p>Install postgres and libpq-dev:</p>
@@ -69,52 +64,45 @@
 </li>
 </ol>
 
-<ul>
-<li>install RabbitMQ and start its server:</li>
-</ul>
-</li>
-</ul>
-
+<h2>Install and Set up RabbitMQ</h2>
 <div class="highlight highlight-shell"><pre>$ sudo apt-get install rabbitmq-server
 $ rabbitmq-server  <span class="pl-c"># run with -detached for daemon mode.</span></pre></div>
 
-<ul>
-<li><p>create a virtualenv for python dev (I like
+<h2>Set up your python environment and install requirements</h2>
+<ol>
+<li><p>Set up a virtual environment for python development (I like
 <a href="http://virtualenvwrapper.readthedocs.org/en/latest/">http://virtualenvwrapper.readthedocs.org/en/latest/</a>).</p></li>
-<li><p>Install the python requirements:</p></li>
-</ul>
-
+<li><p>Install the python requirements:</p>
 <div class="highlight highlight-shell"><pre>$ pip install -r requirements.txt</pre></div>
+</li>
+</ol>
 
-<ul>
+<h2>Set up Amazon Mechanical Turk access</h2>
+<p>(Skip this step if you don't want to run tasks on AMT).
+<ol>
 <li>Create your own private settings file:</li>
-</ul>
-
 <div class="highlight highlight-shell"><pre>$ cp crowd_server/private_settings.py.default crowd_server/private_settings.py</pre></div>
-
-<ul>
+</li>
 <li><p>Sign up for a mechanical turk account, and put the credentials in
 <code>private_settings.py</code>. <strong>NEVER CHECK THIS FILE INTO THE REPO.</strong></p></li>
-<li><p>Set up the database:</p></li>
-</ul>
+</ol>
 
+<h2>Set up the database and run the server</h2>
+<ol>
+<li><p>Reset the database:</p>
 <div class="highlight highlight-shell"><pre>$ ./reset_db.sh</pre></div>
-
-<ul>
-<li>Run the server:</li>
-</ul>
-
+</li>
+<li><p>Run the server:</p>
 <div class="highlight highlight-shell"><pre>$ ./run.sh    <span class="pl-c"># Daemon mode</span>
 $ ./run.sh -d <span class="pl-c"># Debug mode</span>
 $ ./run.sh -s <span class="pl-c"># Use ssl (can be combined with -d)</span></pre></div>
-
-<ul>
+</li>
 <li>
 <p>Make sure it works:</p>
 
 <ol>
 <li>
-<p>Run the sample script which could create a couple of sample HITs on AMT:</p>
+<p>Run the sample script to create a couple of sample HITs on AMT:</p>
 
 <div class="highlight highlight-shell"><pre>  python post.py -c amt -t TASK_TYPES   <span class="pl-c"># You pick 1 or more of 'sa', 'er', 'ft', described below.</span></pre></div>
 </li>
@@ -124,12 +112,12 @@ verify that you have justcreated the sample HITs. Then log in as a worker
 it displays correctly in AMT's iframe.</p></li>
 </ol>
 </li>
-<li>Stop the server:</li>
-</ul>
+<li><p>To stop the server:</p>
 
 <div class="highlight highlight-shell"><pre>$ CTRL-C    <span class="pl-c"># if you ran in debug mode</span>
 $ ./stop.sh <span class="pl-c"># to clean up stray processes regardless.</span></pre></div>
-
+</li>
+</ol>
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/amplab/ampcrowd">AMPcrowd</a> is maintained by <a href="https://github.com/amplab">amplab</a>.</span>
 
