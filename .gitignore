@@ -1,0 +1,9 @@
+# Emacs
+*~
+*#
+
+# Django Celery
+celeryd.pid
+
+# Misc
+*.log

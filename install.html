@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+}<!DOCTYPE html>
 <html lang="en-us">
   <head>
     <meta charset="UTF-8">
@@ -64,7 +64,7 @@
 </li>
 </ol>
 
-<h2><a id="rabbitmq" class="anchor" href="#rabbitmq" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install and RabbitMQ</h2>
+<h2><a id="rabbitmq" class="anchor" href="#rabbitmq" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install RabbitMQ</h2>
 <div class="highlight highlight-shell"><pre>$ sudo apt-get install rabbitmq-server</pre></div>
 
 <h2><a id="pythonenv" class="anchor" href="#pythonenv" aria-hidden="true"><span class="octicon octicon-link"></span></a>Set up your python environment and install requirements</h2>
@@ -103,7 +103,7 @@ $ ./scripts/run.sh -s <span class="pl-c"># Use ssl (can be combined with -d)</sp
 <li>
 <p>Run the sample script to create a couple of sample HITs on AMT, and a couple of hits locally:</p>
 
-<div class="highlight highlight-shell"><pre>  ./scripts/post.py -c amt internal -t TASK_TYPES   <span class="pl-c"># You pick 1 or more of 'sa', 'er', 'ft', described below.</span></pre></div>
+<div class="highlight highlight-shell"><pre>  ./scripts/post.py -c amt internal -t TASK_TYPES   <span class="pl-c"># You pick 1 or more of 'sa', 'er', 'ft', described in the <a href="user_api.html">User API documentation</a>.</span></pre></div>
 </li>
 <li><p>Log into the AMT management interface (<a href="https://requestersandbox.mturk.com/mturk/manageHITs">https://requestersandbox.mturk.com/mturk/manageHITs</a>) and 
 verify that you have justcreated the sample HITs. Then log in as a worker
