@@ -19,22 +19,31 @@
     </section>
 
     <section class="main-content">
-      <h1>
-<a id="ampcrowd" class="anchor" href="#ampcrowd" aria-hidden="true"><span class="octicon octicon-link"></span></a>AMPcrowd</h1>
+<h1>
+<a id="add-your-own-task" class="anchor" href="#add-your-own-task" aria-hidden="true"><span class="octicon octicon-link"></span></a>Add your own task</h1>
 
-<p>This package provides a django server for running microtasks on various
-crowd platforms.</p>
+<p>You can add your own type of crowd task by following the following steps :</p>
 
-<p>Thing to do to get up and running:</p>
+<ol>
+<li>
+<p>Define the API for creating such task, including:</p>
 
 <ul>
-<li><p><a href="install.html">Install</a> the server.</p></li>
-<li><p>Read up on the <a href="user_api.html">user-facing APIs.</a></p></li>
-<li><p>Read up on the <a href="crowd_api.html">crowd-facing APIs.</a></p></li>
-<li><p>Learn how to <a href="new_tasks.html">add new crowd task types to the server.</a></p></li>
-<li><p>See the <a href="available_crowds.html">list of available crowd platforms.</a></p></li>
-<li><p>Learn how to <a href="new_crowds.html">add support for new crowd platforms.</a></p></li>
+<li>Defining the type name of this task, which is a string</li>
+<li>Defining the group_context for this task, which is a <strong>json object</strong> (json array or json dictionary)</li>
+<li>
+<p>Defining the content for each point, which is a <strong>json object</strong>. Note that the 'content' field in the API should
+be a json array mapping ids of points to their contents :</p>
+
+<div class="highlight highlight-json"><pre>  {<span class="pl-ii">'id1'</span>: <span class="pl-ii">content</span><span class="pl-c1">1</span>, <span class="pl-ii">'id2'</span>: <span class="pl-ii">content</span><span class="pl-c1">2</span>}</pre></div>
+</li>
 </ul>
+</li>
+<li><p>Find  <code>/basecrowd/templates/basecrowd/TYPE.html</code>, copy the file to <code>TYPENAME.html</code> where <code>TYPENAME</code> is 
+the type name of this task which  was defined by you in step 1.</p></li>
+<li><p>Open this file, follow the comments in the file to create the template for this task.</p></li>
+</ol>
+
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/amplab/ampcrowd">AMPcrowd</a> is maintained by <a href="https://github.com/amplab">amplab</a>.</span>
 

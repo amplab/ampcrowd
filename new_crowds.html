@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>AMPcrowd by amplab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name"><a class="nostyle" href="index.html">AMPcrowd</a></h1>
+      <h2 class="project-tagline">A RESTful web service that runs microtasks across multiple crowds, provides quality control techniques, and is easily extensible.</h2>
+      <a href="https://github.com/amplab/ampcrowd" class="btn">View on GitHub</a>
+      <a href="https://github.com/amplab/ampcrowd/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/amplab/ampcrowd/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+<h1>
+<a id="interfacing-with-a-new-crowd" class="anchor" href="#interfacing-with-a-new-crowd" aria-hidden="true"><span class="octicon octicon-link"></span></a>Interfacing with a new crowd</h1>
+
+<p>The crowd server is designed to be easily extensible to send tasks to other
+crowd systems. Each crowd is implemented as a Django app that can re-use models,
+views, and templates from our generic 'basecrowd' implementation. To add support
+for a new crowd to the server, you must:</p>
+
+<ol>
+<li><p>Assign your crowd a CROWD_NAME that can be referenced from within URLs.</p></li>
+<li><p>Create your django app with <code>python manage.py startapp CROWD_NAME</code>.</p></li>
+<li><p>In <code>CROWD_NAME/models.py</code>, define your models. A crowd must have at a minimum 
+four models: one for Tasks, one for Task Groups, one for Workers, and one for
+worker Responses. Luckily, we provide abstract implementations of all of
+these in <code>basecrowd/models.py</code>, so simply subclass
+<code>models.AbstractCrowdTask</code>, <code>models.AbstractCrowdTaskGroup</code>,
+<code>models.AbstractCrowdWorker</code>, and <code>models.AbstractCrowdWorkerResponse</code> and
+you're good to go. You can add custom fields to your subclasses if you'd
+like, but it's probably not necessary.</p></li>
+<li>
+<p>Create a new file <code>CROWD_NAME/interface.py</code>. This will be the bulk of your
+work. In the file, create a subclass of <code>basecrowd.interface.CrowdInterface</code>,
+and implement any methods necessary to support your crowd. Feel free to look
+at <code>basecrowd/interface.py</code> for the full list of available methods, but
+you're likely to need only a few, including:</p>
+
+<ul>
+<li>
+<code>create_task</code>: create a new task on your crowd platform.</li>
+<li>
+<code>delete_tasks</code>: delete one or more tasks on your crowd platform.</li>
+<li>
+<code>get_assignment_context</code>: when your crowd platform requests a task
+interface, provide enough context to render your interface template
+(described more below).</li>
+<li>
+<code>get_response_context</code>: when a crowd worker submits data, extract it
+from the request and put it in a format that can be saved to your models.</li>
+</ul>
+
+<p>Finally, create an instance of your interface as a module-level variable,
+e.g.:</p>
+
+<div class="highlight highlight-python"><pre>MYCROWD_INTERFACE <span class="pl-k">=</span> MyCrowdInterface(CROWD_NAME)</pre></div>
+</li>
+<li>
+<p>In <code>CROWD_NAME/__init__.py</code>, register your new interface with the server:</p>
+
+<div class="highlight highlight-python"><pre><span class="pl-k">from</span> interface <span class="pl-k">import</span> MYCROWD_INTERFACE
+<span class="pl-k">from</span> models <span class="pl-k">import</span> <span class="pl-k">*</span>
+<span class="pl-k">from</span> basecrowd.interface <span class="pl-k">import</span> CrowdRegistry
+
+CrowdRegistry.register_crowd(
+    MYCROWD_INTERFACE,
+    <span class="pl-smi">task_model</span><span class="pl-k">=</span>MyCrowdTaskSubclass,
+    <span class="pl-smi">group_model</span><span class="pl-k">=</span>MyTaskGroupSubclass,
+    <span class="pl-smi">worker_model</span><span class="pl-k">=</span>MyWorkerSubclass,
+    <span class="pl-smi">response_model</span><span class="pl-k">=</span>MyResponseSubclass)</pre></div>
+</li>
+<li><p>Now all we need are templates to render the task interfaces to the crowd.
+Again, we provide a base template that should do almost all of the heavy
+lifting. Create your app's template directories and a new template in
+<code>CROWD_NAME/templates/CROWD_NAME/base.html</code>. Inherit from our base template
+with <code>{% extends "basecrowd/base.html" %}</code>, and implement as many blocks in
+that template as you'd like. Our base template (located in
+<code>basecrowd/templates/basecrowd/base.html</code>) contains many inheritable blocks,
+but you probably need to implement only one of them:
+<code>{% block get_submit_context_func %}</code>. This block should contain a javascript
+function definition, <code>get_submit_context(urlParamStrings)</code> that takes a list
+of URL parameters (unsplit in the form 'key=value'), and should return a JSON
+object containing any context that needs to be submitted to the server with
+the data (e.g. the task, worker, and assignment ids relevant to this
+interface). See our implementation in <code>amt/templates/amt/base.html</code> for
+details.</p></li>
+<li><p>The interfaces for individual task types (sentiment analysis, deduplication,
+etc.) should just fit into your <code>base.html</code> template with no additional work.
+If you completely customized <code>base.html</code>, however, you might need custom
+templates for the task types as well. To create them, simply follow the steps
+described above for creating a new task type, but place your template in your
+crowd's template directory (e.g., <code>CROWD_NAME/templates/CROWD_NAME/sa.html</code>).</p></li>
+<li><p>And that's it! Now you should be able to use the APIs described above to
+create and complete tasks on your new crowd platform. If you run into
+trouble, take a look at our implementation of the Amazon Mechanical Turk
+crowd (in <code>amt/</code>) for inspiration.</p></li>
+</ol>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/amplab/ampcrowd">AMPcrowd</a> is maintained by <a href="https://github.com/amplab">amplab</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
+

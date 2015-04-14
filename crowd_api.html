@@ -19,22 +19,43 @@
     </section>
 
     <section class="main-content">
-      <h1>
-<a id="ampcrowd" class="anchor" href="#ampcrowd" aria-hidden="true"><span class="octicon octicon-link"></span></a>AMPcrowd</h1>
-
-<p>This package provides a django server for running microtasks on various
-crowd platforms.</p>
-
-<p>Thing to do to get up and running:</p>
+<h1>
+<a id="crowd-platform-facing-apis" class="anchor" href="#crowd-platform-facing-apis" aria-hidden="true"><span class="octicon octicon-link"></span></a>Crowd platform-facing APIs</h1>
 
 <ul>
-<li><p><a href="install.html">Install</a> the server.</p></li>
-<li><p>Read up on the <a href="user_api.html">user-facing APIs.</a></p></li>
-<li><p>Read up on the <a href="crowd_api.html">crowd-facing APIs.</a></p></li>
-<li><p>Learn how to <a href="new_tasks.html">add new crowd task types to the server.</a></p></li>
-<li><p>See the <a href="available_crowds.html">list of available crowd platforms.</a></p></li>
-<li><p>Learn how to <a href="new_crowds.html">add support for new crowd platforms.</a></p></li>
+<li>
+<p>Get a new assignment to display to a worker:</p>
+
+<ul>
+<li>URL: <strong>GET /crowds/CROWD_NAME/assignments/</strong>
+</li>
+<li>Data: custom for each crowd (see each crowd's <code>assignment_context</code>, below).</li>
+<li>Returns: HTML for the interface that a crowd worker can use to complete the
+task.</li>
 </ul>
+</li>
+<li>
+<p>Post a crowd worker's response to the server:</p>
+
+<ul>
+<li>URL: <strong>POST /crowds/CROWD_NAME/responses/</strong>
+</li>
+<li>
+<p>Data: custom for each crowd (see each crowd's <code>response_context</code>, below).
+Data should be x-www-form-urlencoded and must contain at least the key:</p>
+
+<ul>
+<li>
+<code>answers</code>: the results of the task. Should be a JSON string containing
+key-value pairs, where each key is the unique identifier for a single
+point, and each value is that point's label assigned by the crowd worker.</li>
+</ul>
+</li>
+<li><p>Returns: HTTP status 200 OK on success.</p></li>
+</ul>
+</li>
+</ul>
+
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/amplab/ampcrowd">AMPcrowd</a> is maintained by <a href="https://github.com/amplab">amplab</a>.</span>
 

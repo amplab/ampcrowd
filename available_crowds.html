@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>AMPcrowd by amplab</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name"><a class="nostyle" href="index.html">AMPcrowd</a></h1>
+      <h2 class="project-tagline">A RESTful web service that runs microtasks across multiple crowds, provides quality control techniques, and is easily extensible.</h2>
+      <a href="https://github.com/amplab/ampcrowd" class="btn">View on GitHub</a>
+      <a href="https://github.com/amplab/ampcrowd/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/amplab/ampcrowd/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+<h1>
+<a id="available-crowds" class="anchor" href="#available-crowds" aria-hidden="true"><span class="octicon octicon-link"></span></a>Available Crowds</h1>
+
+<p>The following crowds can be used to process tasks with the crowd server:</p>
+
+<h2>
+<a id="amazon-mechanical-turk-httpswwwmturkcom" class="anchor" href="#amazon-mechanical-turk-httpswwwmturkcom" aria-hidden="true"><span class="octicon octicon-link"></span></a>Amazon Mechanical Turk (<a href="https://www.mturk.com">https://www.mturk.com</a>)</h2>
+
+<ul>
+<li>CROWD_NAME: 'amt'</li>
+<li>
+<p>special configuration keys: </p>
+
+<ul>
+<li>
+<strong>Required</strong>:
+
+<ul>
+<li>
+<code>sandbox</code> : true/false  which indicates using sandbox/real amt</li>
+</ul>
+</li>
+<li>
+<strong>Optional</strong>:
+
+<ul>
+<li>
+<code>title</code> : the title that will show up in AMT's HIT listings (default: 'Generic HIT').<br>
+</li>
+<li>
+<code>descripton</code> : the description that will show up in AMT's HIT listings (default: 'This is a HIT to run on AMT.').</li>
+<li>
+<code>reward</code> : a float containing the number of dollars to pay for each assignment (default: 0.03).</li>
+<li>
+<code>duration</code> : the expected amount of time a worker should spend on each assignment, in minutes (default: 60).</li>
+<li>
+<code>frame_height</code> : the height of the iframe in which workers will see the assignment (default: 800).</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>assignment_context</code>: urlencoded key-value pairs that must include the
+following keys:</p>
+
+<ul>
+<li>
+<code>hitId</code>: the AMT HIT id for the requested task.</li>
+<li>
+<code>worker_id</code>: the id of the Turker who is assigned to the task, not present
+if the worker is previewing the task rather than working on it.</li>
+<li>
+<code>turkSubmitTo</code>: the url which must be posted to in order for AMT to register
+that the task has been completed.</li>
+<li>
+<code>assignmentId</code>: the unique id assigning this worker to this HIT, given the
+special value <code>ASSIGNMENT_ID_NOT_AVAILABLE</code> if the worker is previewing the
+task rather than working on it.</li>
+</ul>
+</li>
+<li>
+<p><code>response_context</code>: x-www-form-urlencoded key-value pairs that must include
+the following keys:</p>
+
+<ul>
+<li>
+<code>answers</code>: the results of the task (see API, above).</li>
+<li>
+<code>HITId</code>: the AMT HIT id for the task.</li>
+<li>
+<code>workerId</code>: the id of the Turker who is responding to the task.</li>
+<li>
+<code>assignmentId</code>: the unique id assigning this worker to this HIT.</li>
+</ul>
+</li>
+</ul>
+
+<h2>
+<a id="internal-crowd" class="anchor" href="#internal-crowd" aria-hidden="true"><span class="octicon octicon-link"></span></a>Internal Crowd</h2>
+
+<ul>
+<li>CROWD_NAME: 'internal'</li>
+<li>special configuration keys: None</li>
+<li>
+<p><code>assignment_context</code>: urlencoded key-value pairs that must include the
+following keys:</p>
+
+<ul>
+<li>
+<code>worker_id</code>: the id of the worker assigned to the task.</li>
+<li>
+<code>task_type</code>: the type of task to assign to the worker.</li>
+</ul>
+</li>
+<li>
+<p><code>response_context</code>: x-www-form-urlencoded key-value pairs that must include
+the following keys:</p>
+
+<ul>
+<li>
+<code>answers</code>: the results of the task (see API, above).</li>
+<li>
+<code>task_id</code>: the unique id for the task.</li>
+<li>
+<code>worker_id</code>: the unique id of the worker responding to the task.</li>
+<li>
+<code>assignment_id</code>: the unique id assigning this worker to this task.</li>
+</ul>
+</li>
+</ul>
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/amplab/ampcrowd">AMPcrowd</a> is maintained by <a href="https://github.com/amplab">amplab</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
+
