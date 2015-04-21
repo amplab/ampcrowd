@@ -10,6 +10,7 @@ import random
 
 from argparse import ArgumentParser
 
+
 # custom HTTPS opener, django-sslserver supports SSLv3 only
 class HTTPSConnectionV3(httplib.HTTPSConnection):
     def __init__(self, *args, **kwargs):
@@ -26,9 +27,11 @@ class HTTPSConnectionV3(httplib.HTTPSConnection):
             print("Trying SSLv3.")
             self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=ssl.PROTOCOL_TLSv1)
 
+
 class HTTPSHandlerV3(urllib2.HTTPSHandler):
     def https_open(self, req):
         return self.do_open(HTTPSConnectionV3, req)
+
 
 def send_request(data):
     url = 'https://127.0.0.1:8000/dashboard/results/'
@@ -36,6 +39,7 @@ def send_request(data):
     res = json.loads(response.read())
     if res['status'] != 'ok':
         print 'Got something wrong!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+
 
 # Create batches of task
 def create_query_results(query_ids):
@@ -46,8 +50,9 @@ def create_query_results(query_ids):
     for query_id, num_groups in query_ids.iteritems():
         is_grouped = num_groups > 1
         if is_grouped:
-            results = { 'group%d' % (i+1) : random.uniform(10000,20000)
-                        for i in range(num_groups) }
+            results = {
+                'group%d' % (i+1): random.uniform(10000, 20000) for i in range(num_groups)
+            }
             query_string = "SELECT count(*) FROM the_best_table GROUP BY awesomeness;"
         else:
             results = random.uniform(10000, 20000)
@@ -61,6 +66,7 @@ def create_query_results(query_ids):
             'results': json.dumps(results)
         }
         send_request(data)
+
 
 def parse_args():
     parser = ArgumentParser(
@@ -79,7 +85,7 @@ def parse_args():
         args.query_ids = [str(uuid.uuid4())]
 
     if not args.num_groups:
-        args.num_groups = [1 for query_id in args.query_ids]
+        args.num_groups = [1 for _ in args.query_ids]
 
     for num_group in args.num_groups:
         if num_group < 1:
@@ -92,8 +98,9 @@ def parse_args():
         parser.print_usage()
         sys.exit()
 
-    args.query_id_map = { args.query_ids[i] : args.num_groups[i]
-                       for i in range(len(args.query_ids)) }
+    args.query_id_map = {
+        args.query_ids[i]: args.num_groups[i] for i in range(len(args.query_ids))
+    }
     return args
 
 if __name__ == "__main__":

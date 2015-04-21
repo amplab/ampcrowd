@@ -1,9 +1,9 @@
-''' Connection.py
+""" Connection.py
 
     Utilities for connecting to Amazon's Mechanical Turk.
     Requires amazon's boto package (http://boto.readthedocs.org/en/latest/)
 
-'''
+"""
 
 from boto.mturk.connection import MTurkConnection, MTurkRequestError
 from boto.mturk.question import ExternalQuestion
@@ -16,16 +16,18 @@ import json
 
 AMT_NO_ASSIGNMENT_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'
 
+
 def get_amt_connection(sandbox):
-    ''' Get a connection object to communicate with the AMT API. '''
+    """ Get a connection object to communicate with the AMT API. """
     host = (settings.AMT_SANDBOX_HOST
             if sandbox else settings.AMT_HOST)
     return MTurkConnection(aws_access_key_id=settings.AMT_ACCESS_KEY,
                            aws_secret_access_key=settings.AMT_SECRET_KEY,
                            host=host)
 
+
 def create_hit(hit_options):
-    ''' Create a new HIT on AMT.
+    """ Create a new HIT on AMT.
 
         `hit_options` is a dictionary that can contain:
 
@@ -36,13 +38,13 @@ def create_hit(hit_options):
         * `duration`: The expected amount of time a worker should spend on each
           assignment, in minutes
         * `num_responses`: The number of responses to get for the HIT
-        * `frame_height`: The height of the iframe in which workers will see the 
+        * `frame_height`: The height of the iframe in which workers will see the
           assignment
         * `use_https`: whether or not to load assignment in AMT's iframe using
           HTTPS. Strongly recommended to be True
 
         By default, options are loaded from `settings.AMT_DEFAULT_HIT_OPTIONS`.
-    '''
+    """
     options = settings.AMT_DEFAULT_HIT_OPTIONS
     options.update(hit_options)
 
@@ -69,6 +71,7 @@ def create_hit(hit_options):
         approval_delay=0)
 
     return create_response[0].HITId
+
 
 def disable_hit(task):
     crowd_config = json.loads(task.group.crowd_config)

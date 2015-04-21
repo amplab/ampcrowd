@@ -16,3 +16,5 @@ web:
     - .:/usr/src/app
   command:
     - "-d"
+  env_file:
+    - secrets.env

@@ -8,12 +8,13 @@ from basecrowd.interface import CrowdInterface
 from connection import create_hit, disable_hit, AMT_NO_ASSIGNMENT_ID
 from models import Request
 
+
 class AMTCrowdInterface(CrowdInterface):
 
     @staticmethod
     def validate_configuration(configuration):
         # Validate the configuration specific to amt
-        try : 
+        try:
             CrowdInterface.require_context(
                 configuration, 
                 ['sandbox'],
@@ -27,7 +28,7 @@ class AMTCrowdInterface(CrowdInterface):
     @staticmethod
     def create_task(configuration, content):
         # Use the boto API to create an AMT HIT
-        additional_options = {'num_responses' : configuration['num_assignments']}
+        additional_options = {'num_responses': configuration['num_assignments']}
         additional_options.update(configuration['amt'])
         return create_hit(additional_options)
 
@@ -71,14 +72,15 @@ class AMTCrowdInterface(CrowdInterface):
     @staticmethod
     def get_response_context(request):
         # Extract data from the request
-        return {'answers': request.POST.get('answers'),
-                'task_id': request.POST.get('HITId'),
-                'worker_id': request.POST.get('workerId'),
-                'assignment_id': request.POST.get('assignmentId')
-            }
+        return {
+            'answers': request.POST.get('answers'),
+            'task_id': request.POST.get('HITId'),
+            'worker_id': request.POST.get('workerId'),
+            'assignment_id': request.POST.get('assignmentId')
+        }
 
     def get_frontend_submit_url(self, crowd_config):
         return (settings.POST_BACK_AMT_SANDBOX
-                if crowd_config['sandbox'] else POST_BACK_AMT)
+                if crowd_config['sandbox'] else settings.POST_BACK_AMT)
 
 AMT_INTERFACE = AMTCrowdInterface('amt')
