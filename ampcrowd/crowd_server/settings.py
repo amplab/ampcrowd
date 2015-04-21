@@ -59,7 +59,8 @@ AMT_HOST = 'mechanicalturk.amazonaws.com'
 POST_BACK_AMT = 'https://www.mturk.com/mturk/externalSubmit'
 POST_BACK_AMT_SANDBOX = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
-HAVE_PUBLIC_IP = True # run on a server with public ip or just run locally?
+# If True, fetch public facing IP address and use as callback, else set to localhost
+HAVE_PUBLIC_IP = True
 AMT_CALLBACK_HOST = os.environ.get('AMT_CALLBACK_HOST', 'docker:8000')
 
 AMT_DEFAULT_HIT_OPTIONS = { # See documentation in amt/connection.py:create_hit
