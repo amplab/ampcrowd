@@ -72,6 +72,9 @@ AMT_DEFAULT_HIT_OPTIONS = { # See documentation in amt/connection.py:create_hit
     'use_https': SSL_MODE,
 }
 
+AMT_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY_ID', '')
+AMT_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+
 # AMT Settings that MUST be defined in private_settings.py:
 #   AMT_ACCESS_KEY
 #   AMT_SECRET_KEY
