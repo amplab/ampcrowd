@@ -61,7 +61,9 @@ POST_BACK_AMT_SANDBOX = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
 # If True, fetch public facing IP address and use as callback, else set to localhost
 HAVE_PUBLIC_IP = True
-AMT_CALLBACK_HOST = os.environ.get('AMT_CALLBACK_HOST', 'docker:8000')
+
+# Set the callback for the crowd tasks. For development use /etc/hosts to set crowd_host correctly.
+AMT_CALLBACK_HOST = os.environ.get('AMT_CALLBACK_HOST', 'crowd_host:8000')
 
 AMT_DEFAULT_HIT_OPTIONS = { # See documentation in amt/connection.py:create_hit
     'title': 'Generic HIT',
