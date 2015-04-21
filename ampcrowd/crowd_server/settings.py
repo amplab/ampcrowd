@@ -49,7 +49,7 @@ if SSL_MODE:
 
 # Celery Configuration
 djcelery.setup_loader()
-BROKER_URL = "amqp://guest:guest@localhost:5672//"
+BROKER_URL = "amqp://guest:guest@rabbitmq:5672//"
 
 # Settings for the AMT app
 # AMT_SANDBOX = True # run on the sandbox, or on the real deal?
@@ -60,6 +60,7 @@ POST_BACK_AMT = 'https://www.mturk.com/mturk/externalSubmit'
 POST_BACK_AMT_SANDBOX = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
 HAVE_PUBLIC_IP = True # run on a server with public ip or just run locally?
+AMT_CALLBACK_HOST = os.environ.get('AMT_CALLBACK_HOST', 'docker:8000')
 
 AMT_DEFAULT_HIT_OPTIONS = { # See documentation in amt/connection.py:create_hit
     'title': 'Generic HIT',
@@ -97,7 +98,6 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',
     'sslserver',
     'djcelery',
     'basecrowd',
@@ -129,7 +129,7 @@ DATABASES = {
         'NAME': 'sampleclean',
         'USER': 'sampleclean',
         'PASSWORD': 'sampleclean',
-        'HOST': '127.0.0.1',
+        'HOST': 'db',
         'PORT': '5432',
     }
 }

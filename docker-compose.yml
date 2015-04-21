@@ -1,0 +1,18 @@
+db:
+  image: postgres
+  environment:
+    POSTGRES_PASSWORD: sampleclean
+    POSTGRES_USER: sampleclean
+rabbitmq:
+  image: rabbitmq
+web:
+  build: .
+  links:
+    - db
+    - rabbitmq
+  ports:
+    - "8000:8000"
+  volumes:
+    - .:/usr/src/app
+  command:
+    - "-d"

@@ -11,3 +11,9 @@ celeryd.pid
 
 # Misc
 *.log
+
+# Mac
+.DS_Store
+
+# PyCharm
+.idea

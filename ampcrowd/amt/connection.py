@@ -52,7 +52,7 @@ def create_hit(hit_options):
     path = AMT_INTERFACE.get_assignment_url()
 
     url = (scheme + '://' + json.loads(urlopen('http://jsonip.com').read())['ip'] + ':8000' +  path
-           if settings.HAVE_PUBLIC_IP else scheme + '://' + Site.objects.get_current().domain + path)
+           if settings.HAVE_PUBLIC_IP else scheme + '://' + settings.AMT_CALLBACK_HOST + path)
 
     question = ExternalQuestion(
         external_url=url,
