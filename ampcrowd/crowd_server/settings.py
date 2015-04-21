@@ -49,6 +49,9 @@ if SSL_MODE:
 
 # Celery Configuration
 djcelery.setup_loader()
+
+# Set broker using hosts entry for 'rabbitmq'. This is set for Docker but can be set to alias
+# localhost in /hosts/etc if needed
 BROKER_URL = "amqp://guest:guest@rabbitmq:5672//"
 
 # Settings for the AMT app
