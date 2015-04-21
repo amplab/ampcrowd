@@ -13,7 +13,6 @@ from basecrowd.interface import CrowdRegistry
 from basecrowd.tasks import gather_answer
 
 
-# Create new tasks
 @require_POST
 @csrf_exempt
 def create_task_group(request, crowd_name):

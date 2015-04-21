@@ -205,7 +205,7 @@ class CrowdInterface(object):
         # Require at least one record for crowd processing.
         content = json_dict['content']
         point_identifiers = content.keys()
-        if len(point_identifiers) == 0 :
+        if len(point_identifiers) == 0:
             return False
 
         # Do crowd-specific validation

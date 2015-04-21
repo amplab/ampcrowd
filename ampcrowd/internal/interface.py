@@ -9,6 +9,8 @@ from models import CrowdTask
 
 SLACK = 2
 ORDER_WEIGHT = 0.3
+
+
 class InternalCrowdInterface(CrowdInterface):
 
     @staticmethod
@@ -34,7 +36,6 @@ class InternalCrowdInterface(CrowdInterface):
             'is_accepted': True,
             'assignment_id': assignment_id,
         }
-
 
     def get_frontend_submit_url(self, crowd_config):
         return reverse('internal:fake_submit_endpoint')
