@@ -51,7 +51,7 @@ def create_hit(hit_options):
     from interface import AMT_INTERFACE
     path = AMT_INTERFACE.get_assignment_url()
 
-    url = (scheme + '://' + json.loads(urlopen('http://jsonip.com').read())['ip'] + ':8000' +  path
+    url = (scheme + '://' + json.loads(urlopen('http://jsonip.com').read())['ip'] + ':8000' + path
            if settings.HAVE_PUBLIC_IP else scheme + '://' + settings.AMT_CALLBACK_HOST + path)
 
     question = ExternalQuestion(
@@ -70,7 +70,7 @@ def create_hit(hit_options):
 
     return create_response[0].HITId
 
-def disable_hit(task) :
+def disable_hit(task):
     crowd_config = json.loads(task.group.crowd_config)
     conn = get_amt_connection(crowd_config['sandbox'])
     try:
