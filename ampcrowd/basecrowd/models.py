@@ -3,6 +3,7 @@ from django.db.models.signals import class_prepared
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 
+
 # Model for a group of tasks
 class AbstractCrowdTaskGroup(models.Model):
 
@@ -26,6 +27,7 @@ class AbstractCrowdTaskGroup(models.Model):
 
     class Meta:
         abstract = True
+
 
 # Model for an individual task.
 class AbstractCrowdTask(models.Model):
@@ -66,6 +68,7 @@ class AbstractCrowdTask(models.Model):
     class Meta:
         abstract = True
 
+
 # Model for workers
 class AbstractCrowdWorker(models.Model):
 
@@ -83,6 +86,7 @@ class AbstractCrowdWorker(models.Model):
 
     class Meta:
         abstract = True
+
 
 # Model for a worker's response to a task
 class AbstractCrowdWorkerResponse(models.Model):
@@ -110,6 +114,7 @@ class AbstractCrowdWorkerResponse(models.Model):
 
     class Meta:
         abstract = True
+
 
 # Register a set of models as a new crowd.
 class CrowdModelSpecification(object):
@@ -142,6 +147,6 @@ class CrowdModelSpecification(object):
         self.add_rel(self.response_model, self.worker_model, models.ForeignKey,
                      'worker', 'responses')
 
-        # reponses pertain to a task
+        # responses pertain to a task
         self.add_rel(self.response_model, self.task_model, models.ForeignKey,
                      'task', 'responses')

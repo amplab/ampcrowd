@@ -1,12 +1,13 @@
 import json
 from math import log
 
+
 # Make an Expectation Maximization answer for a task
 def make_em_answer(task_obj, model_spec):
 
     example_to_worker_label = {}
     worker_to_example_label = {}
-    label_set=[]
+    label_set = []
     answers = []
 
     # Label set
@@ -15,10 +16,10 @@ def make_em_answer(task_obj, model_spec):
     # Build up initial variables for em
     responses = model_spec.response_model.objects.filter(
         task__task_type=task_obj.task_type)
-    for response in responses :
+    for response in responses:
 
             answer_list = json.loads(response.content)
-            for point_id in answer_list.keys() :
+            for point_id in answer_list.keys():
 
                 worker_id = response.worker.worker_id
                 unique_id = point_id
@@ -43,13 +44,13 @@ def make_em_answer(task_obj, model_spec):
     point_ids = json.loads(task_obj.responses.all()[0].content).keys()
     answer_label = {}
 
-    for point_id in point_ids :
+    for point_id in point_ids:
         unique_id = point_id
         soft_label = ans[unique_id]
         maxv = 0
         cur_label = label_set[0]
-        for label, weight in soft_label.items() :
-            if weight > maxv :
+        for label, weight in soft_label.items():
+            if weight > maxv:
                 maxv = weight
                 cur_label = label
         answer_label[point_id] = float(cur_label)
@@ -58,10 +59,10 @@ def make_em_answer(task_obj, model_spec):
 
 
 class EM:
-    def __init__(self,example_to_worker_label,worker_to_example_label,label_set):
-        self.example_to_worker_label=example_to_worker_label
-        self.worker_to_example_label=worker_to_example_label
-        self.label_set=label_set
+    def __init__(self, example_to_worker_label, worker_to_example_label, label_set):
+        self.example_to_worker_label = example_to_worker_label
+        self.worker_to_example_label = worker_to_example_label
+        self.label_set = label_set
 
     def ConfusionMatrix(self, worker_to_example_label, example_to_softlabel):
         worker_to_finallabel_weight = {}
@@ -73,7 +74,7 @@ class EM:
             if worker not in worker_to_finallabel_workerlabel_weight:
                 worker_to_finallabel_workerlabel_weight[worker] = {}
             for example, workerlabel in example_label:
-                softlabel =  example_to_softlabel[example]
+                softlabel = example_to_softlabel[example]
                 for finallabel, weight in softlabel.items():
                     worker_to_finallabel_weight[worker][finallabel] = worker_to_finallabel_weight[worker].get(finallabel, 0)+weight
                     if finallabel not in worker_to_finallabel_workerlabel_weight[worker]:

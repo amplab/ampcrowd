@@ -14,6 +14,7 @@ def gather_answer(current_task_id, model_spec):
     current_task.group.save()
     submit_callback_answer(current_task)
 
+
 # Submit the answers to the callback URL
 def submit_callback_answer(current_task):
     url = current_task.group.callback_url

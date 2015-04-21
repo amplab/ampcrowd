@@ -11,11 +11,12 @@ class CrowdTask(AbstractCrowdTask): pass
 class CrowdWorker(AbstractCrowdWorker): pass
 class CrowdWorkerResponse(AbstractCrowdWorkerResponse): pass
 
+
 # Model for storing requests
 class Request(models.Model):
 
     # Path of this request
-    path = models.CharField(max_length = 1024)
+    path = models.CharField(max_length=1024)
 
     # Json array of this request
     post_json = models.TextField()

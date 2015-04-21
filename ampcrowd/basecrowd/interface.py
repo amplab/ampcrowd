@@ -5,6 +5,7 @@ from django.core.urlresolvers import reverse
 
 from models import CrowdModelSpecification
 
+
 # Required implementation for a new crowd type
 class CrowdInterface(object):
     def __init__(self, crowd_name):
@@ -111,12 +112,12 @@ class CrowdInterface(object):
 
         """
         # Base implementation, look for the fields in the POST dictionary
-        return {'task_id': request.POST.get('task_id', None),
-                'worker_id': request.POST.get('worker_id', None),
-                'assignment_id': request.POST.get('assignment_id', None),
-                'answers': request.POST.get('answers', None)
+        return {
+            'task_id': request.POST.get('task_id', None),
+            'worker_id': request.POST.get('worker_id', None),
+            'assignment_id': request.POST.get('assignment_id', None),
+            'answers': request.POST.get('answers', None)
         }
-
 
     @staticmethod
     def worker_pre_save(worker_object):
@@ -155,7 +156,7 @@ class CrowdInterface(object):
     def get_assignment_url(self):
         """ Return a url path to the view which will produce the task interface.
 
-        Sublcasses shouldn't need to override this.
+        Subclasses shouldn't need to override this.
         """
         return reverse('basecrowd:get_assignment', args=[self.crowd_name])
 
@@ -166,7 +167,6 @@ class CrowdInterface(object):
         """
         return reverse('basecrowd:post_response', args=[self.crowd_name])
 
-
     ###############################################################################
     # Internal methods that don't need to be overwritten or called by subclasses. #
     ###############################################################################
@@ -174,14 +174,14 @@ class CrowdInterface(object):
     # Validate context dictionaries
     @staticmethod
     def require_context(context_dictionary, required_keys, exc):
-        if any([context_dictionary.get(k) == None for k in required_keys]):
+        if any([context_dictionary.get(k) is None for k in required_keys]):
             raise exc
 
     # Validate the API create request.
     def validate_create_request(self, request_json):
         try:
             json_dict = json.loads(request_json)
-        except ValueError: # data was invalid JSON
+        except ValueError:  # data was invalid JSON
             return False
 
         try:
@@ -213,6 +213,7 @@ class CrowdInterface(object):
         return self.validate_configuration(crowd_config)
 
     # Get the appropriate model class
+
 
 class CrowdRegistry(object):
     registered_crowds = {}

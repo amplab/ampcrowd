@@ -12,18 +12,19 @@ import os
 from basecrowd.interface import CrowdRegistry
 from basecrowd.tasks import gather_answer
 
+
 # Create new tasks
 @require_POST
 @csrf_exempt
 def create_task_group(request, crowd_name):
-    ''' See README.md for API. '''
+    """ See README.md for API. """
 
     # get the interface implementation from the crowd name.
     interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
 
     # Response dictionaries
-    correct_response = {'status' : 'ok'}
-    wrong_response = {'status' : 'wrong'}
+    correct_response = {'status': 'ok'}
+    wrong_response = {'status': 'wrong'}
 
     # Parse information contained in the URL
     json_dict = request.POST.get('data')
@@ -64,7 +65,6 @@ def create_task_group(request, crowd_name):
             current_content[point_identifiers[j]] = content[point_identifiers[j]]
         current_content = json.dumps(current_content)
 
-
         # Call the create task hook
         current_task_id = interface.create_task(configuration, current_content)
 
@@ -82,6 +82,7 @@ def create_task_group(request, crowd_name):
         current_task.save()
 
     return HttpResponse(json.dumps(correct_response))
+
 
 # Delete all tasks from the system.
 def purge_tasks(request, crowd_name):
@@ -160,6 +161,7 @@ def get_assignment(request, crowd_name):
                             context=context)
     return HttpResponse(template.render(RequestContext(request, context)))
 
+
 def get_scoped_template(crowd_name, template_name, context=None):
     base_template_name = os.path.join(crowd_name, 'base.html')
     if context is not None:
@@ -172,6 +174,7 @@ def get_scoped_template(crowd_name, template_name, context=None):
     return select_template([
         os.path.join(crowd_name, template_name),
         os.path.join('basecrowd', template_name)])
+
 
 # When workers submit assignments, we should send data to this view via AJAX
 # before submitting to AMT.
@@ -217,4 +220,4 @@ def post_response(request, crowd_name):
         current_task.save()
         gather_answer.delay(current_task.task_id, model_spec)
 
-    return HttpResponse('ok') # AJAX call succeded.
+    return HttpResponse('ok')  # AJAX call succeded.
