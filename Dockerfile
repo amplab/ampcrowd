@@ -11,5 +11,5 @@ EXPOSE 8000
 
 COPY ampcrowd/docker-entrypoint.sh /usr/src/app/ampcrowd
 ENTRYPOINT ["bash", "ampcrowd/docker-entrypoint.sh"]
-CMD ["-d"]
+CMD ["-s", "-f"]
 

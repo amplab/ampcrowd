@@ -1,8 +1,8 @@
 db:
   image: postgres
   environment:
-    POSTGRES_PASSWORD: sampleclean
-    POSTGRES_USER: sampleclean
+    POSTGRES_PASSWORD: ampcrowd
+    POSTGRES_USER: ampcrowd
 rabbitmq:
   image: rabbitmq
 web:
@@ -14,5 +14,3 @@ web:
     - "8000:8000"
   volumes:
     - .:/usr/src/app
-  command:
-    - "-d"

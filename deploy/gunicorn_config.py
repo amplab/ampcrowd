@@ -11,7 +11,8 @@ bind = "0.0.0.0:8000"
 workers = multiprocessing.cpu_count() * 2 + 1
 
 # Run in the background as a daemon
-daemon = not debug
+foreground = debug or os.environ.get("FOREGROUND", False) == "1"
+daemon = not foreground
 
 # Logging
 accesslog = "access-gunicorn.log"
@@ -26,3 +27,5 @@ if use_ssl:
 
 print "Debug mode:", debug
 print "SSL mode:", use_ssl
+print "Foreground mode:", foreground
+print "Daemon mode:", daemon

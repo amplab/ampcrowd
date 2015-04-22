@@ -135,9 +135,9 @@ WSGI_APPLICATION = 'crowd_server.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'sampleclean',
-        'USER': 'sampleclean',
-        'PASSWORD': 'sampleclean',
+        'NAME': 'ampcrowd',
+        'USER': 'ampcrowd',
+        'PASSWORD': 'ampcrowd',
         'HOST': 'db',
         'PORT': '5432',
     }
