@@ -17,4 +17,4 @@ web:
   command:
     - "-d"
   env_file:
-    - secrets.env
+    - secrets.environment

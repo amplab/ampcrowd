@@ -62,7 +62,7 @@ AMT_HOST = 'mechanicalturk.amazonaws.com'
 POST_BACK_AMT = 'https://www.mturk.com/mturk/externalSubmit'
 POST_BACK_AMT_SANDBOX = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
-# If True, fetch public facing IP address and use as callback, else set to localhost
+# If True, fetch public facing IP address and use as callback, else set to crowd_host
 HAVE_PUBLIC_IP = True
 
 # Set the callback for the crowd tasks. For development use /etc/hosts to set crowd_host correctly.

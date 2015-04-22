@@ -19,4 +19,4 @@ celeryd.pid
 .idea
 
 # Secrets
-secrets.env
+secrets.environment
