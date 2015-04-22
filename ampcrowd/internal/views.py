@@ -10,6 +10,7 @@ from basecrowd.interface import CrowdRegistry
 from models import CrowdTask, CrowdWorker
 from interface import INTERNAL_CROWD_INTERFACE as interface
 
+
 @require_POST
 @csrf_exempt
 def fake_submit_endpoint(request):
@@ -18,6 +19,7 @@ def fake_submit_endpoint(request):
 
 @require_GET
 def index(request):
+
     interface, _ = CrowdRegistry.get_registry_entry('internal')
 
     # Get worker id from session, or create one if this is a first-time user.

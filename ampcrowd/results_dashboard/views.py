@@ -9,12 +9,14 @@ from django.views.decorators.http import require_GET, require_POST
 
 from results_dashboard.models import Query, QueryResult, QueryGroupResult
 
+
 @require_GET
 def index(request):
     context = {
         'queries': Query.objects.all()
     }
     return render(request, 'results_dashboard/index.html', context)
+
 
 @require_POST
 @csrf_exempt
@@ -56,6 +58,7 @@ def post_result(request):
     return HttpResponse(json.dumps({'status': 'ok'}),
                         content_type='application/json')
 
+
 @require_GET
 def get_new_queries(request):
     already_seen = json.loads(request.GET.get('seen', "[]"))
@@ -65,6 +68,7 @@ def get_new_queries(request):
     return HttpResponse(json.dumps(list(results),
                                    default=lambda dt: dt.isoformat()),
                         content_type='application/json')
+
 
 @require_GET
 def get_result(request, query_id):
@@ -85,7 +89,7 @@ def get_result(request, query_id):
                                 content_type="application/json"
 )
         result = results[0]
-    except IndexError: # No query results at all for this query yet.
+    except IndexError:  # No query results at all for this query yet.
         return HttpResponse(json.dumps({'results': 'none'}),
                             content_type="application/json")
 
@@ -101,10 +105,12 @@ def get_result(request, query_id):
                              default=lambda dt: dt.isoformat())
     return HttpResponse(result_json, content_type="application/json")
 
+
 @require_GET
 def purge_queries(request):
     Query.objects.all().delete()
     return HttpResponse("{}", content_type="application/json")
+
 
 @require_POST
 @csrf_exempt

@@ -6,6 +6,7 @@ COPY requirements.txt /usr/src/app/
 WORKDIR /usr/src/app
 RUN pip install -r requirements.txt
 
+ENV PYTHONUNBUFFERED 1
 EXPOSE 8000
 
 COPY ampcrowd/docker-entrypoint.sh /usr/src/app/ampcrowd

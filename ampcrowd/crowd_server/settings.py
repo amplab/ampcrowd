@@ -162,9 +162,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Sites
-# https://docs.djangoproject.com/en/1.6/ref/contrib/sites/
-SITE_ID = 1
 
 # Import private settings, overriding settings in this file
 try:
