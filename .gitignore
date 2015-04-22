@@ -19,4 +19,4 @@ celeryd.pid
 .idea
 
 # Secrets
-secrets.environment
+private_settings.py
