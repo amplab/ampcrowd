@@ -17,3 +17,6 @@ celeryd.pid
 
 # PyCharm
 .idea
+
+# Secrets
+secrets.env
