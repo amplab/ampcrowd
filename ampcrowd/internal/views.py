@@ -1,3 +1,4 @@
+import logging
 import uuid
 from urllib import urlencode
 
@@ -10,6 +11,8 @@ from basecrowd.interface import CrowdRegistry
 from models import CrowdTask, CrowdWorker
 from interface import INTERNAL_CROWD_INTERFACE as interface
 
+logger = logging.getLogger('crowd_server')
+
 
 @require_POST
 @csrf_exempt
@@ -17,9 +20,9 @@ def fake_submit_endpoint(request):
     # display a cat!
     return render(request, 'internal/cat.html', {})
 
+
 @require_GET
 def index(request):
-
     interface, _ = CrowdRegistry.get_registry_entry('internal')
 
     # Get worker id from session, or create one if this is a first-time user.
@@ -61,6 +64,7 @@ def index(request):
     # Render index template
     return render(request, 'internal/index.html', {'task_types': task_types,
                                                    'task_map': task_type_map})
+
 
 def build_context(task_type_map, total_tasks_by_type, worker_id, task_type=None,
                   task_type_obj=None):

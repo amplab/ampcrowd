@@ -16,32 +16,47 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DEV_MODE = os.environ.get('DEVELOP', False) == "1"
 SSL_MODE = os.environ.get('SSL', False) == "1"
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'formatters': {
+        'simple': {
+            'format': '[%(name)s:%(levelname)s] %(message)s'
+        }
+    },
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'django.log',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        }
+    },
+    'loggers': {
+        'django': {
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'crowd_server': {
+            'level': 'DEBUG',
+        }
+    },
+}
 # Settings for production
 if not DEV_MODE:
     # Don't validate hostnames, since we'll be moving IPs around.
     ALLOWED_HOSTS = '*'
 
     # Dump all logs to the file 'django.log'
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': True,
-        'handlers': {
-            'file': {
-                'level': 'DEBUG',
-                'class': 'logging.FileHandler',
-                'filename': 'django.log',
-            },
-        },
-        'loggers': {
-            'django': {
-                'handlers': ['file'],
-                'level': 'DEBUG',
-                'propagate': True,
-            },
-        },
-    }
+    LOGGING['loggers']['django']['handlers'] = ['file']
+    LOGGING['loggers']['crowd_server']['handlers'] = ['file']
 else:
     ALLOWED_HOSTS = []
+    LOGGING['loggers']['crowd_server']['handlers'] = ['console']
 
 if SSL_MODE:
     CSRF_COOKIE_SECURE = True
