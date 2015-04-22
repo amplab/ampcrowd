@@ -8,9 +8,12 @@ from datetime import datetime
 import pytz
 import json
 import os
+import logging
 
 from basecrowd.interface import CrowdRegistry
 from basecrowd.tasks import gather_answer
+
+logger = logging.getLogger('crowd_server')
 
 
 @require_POST
@@ -99,7 +102,6 @@ def purge_tasks(request, crowd_name):
 @xframe_options_exempt
 @require_GET
 def get_assignment(request, crowd_name):
-
     # get the interface implementation from the crowd name.
     interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
 

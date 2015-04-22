@@ -10,11 +10,26 @@ from boto.mturk.question import ExternalQuestion
 from boto.mturk.price import Price
 from datetime import timedelta
 from django.conf import settings
-from django.contrib.sites.models import Site
+from django.http import HttpResponseBadRequest
 from urllib2 import urlopen
 import json
+import traceback
+import logging
+
+logger = logging.getLogger('crowd_server')
 
 AMT_NO_ASSIGNMENT_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'
+
+
+class AMTException(Exception):
+    pass
+
+
+class AMTExceptionMiddleware(object):
+    def process_exception(self, request, exception):
+        if not isinstance(exception, AMTException):
+            return None
+        return HttpResponseBadRequest(exception.message)
 
 
 def get_amt_connection(sandbox):
@@ -61,14 +76,24 @@ def create_hit(hit_options):
         frame_height=options['frame_height'])
     conn = get_amt_connection(options['sandbox'])
 
-    create_response = conn.create_hit(
-        question=question,
-        title=options['title'],
-        description=options['description'],
-        reward=Price(amount=options['reward']),
-        duration=timedelta(minutes=options['duration']),
-        max_assignments=options['num_responses'],
-        approval_delay=0)
+    try:
+        create_response = conn.create_hit(
+            question=question,
+            title=options['title'],
+            description=options['description'],
+            reward=Price(amount=options['reward']),
+            duration=timedelta(minutes=options['duration']),
+            max_assignments=options['num_responses'],
+            approval_delay=0)
+    except MTurkRequestError:
+        logger.debug(traceback.format_exc())
+        raise AMTException(
+            """
+            Could not reach Amazon Mechanical Turk.
+            Check that you are using https mode, and defined a valid assignment.
+            Details of the exception have been logged to the ampcrowd server.
+            """
+        )
 
     return create_response[0].HITId
 
@@ -78,5 +103,8 @@ def disable_hit(task):
     conn = get_amt_connection(crowd_config['sandbox'])
     try:
         conn.disable_hit(task.task_id)
-    except MTurkRequestError, e:
-        raise ValueError("Couldn't delete HIT " + task.task_id + ": " + str(e))
+    except MTurkRequestError as e:
+        logging.debug(traceback.format_exc())
+        raise AMTException(
+            "Couldn't delete HIT " + task.task_id + ": " + str(e)
+        )

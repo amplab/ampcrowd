@@ -7,8 +7,11 @@ import json
 import urllib
 import urllib2
 import operator
+import logging
 
 from argparse import ArgumentParser
+
+logging.getLogger().setLevel(logging.INFO)
 
 # custom HTTPS opener, django-sslserver supports SSLv3 only
 class HTTPSConnectionV3(httplib.HTTPSConnection):
@@ -22,7 +25,7 @@ class HTTPSConnectionV3(httplib.HTTPSConnection):
             self._tunnel()
         try:
             self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=ssl.PROTOCOL_TLSv1)
-        except ssl.SSLError, e:
+        except ssl.SSLError as e:
             print("Trying SSLv3.")
             self.sock = ssl.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=ssl.PROTOCOL_TLSv1)
 
@@ -30,16 +33,22 @@ class HTTPSHandlerV3(urllib2.HTTPSHandler):
     def https_open(self, req):
         return self.do_open(HTTPSConnectionV3, req)
 
-def send_request(data, crowds, num_requests, use_ssl) :
-
+def send_request(data, crowds, num_requests, use_ssl):
     # Send request
     params = {'data' : json.dumps(data)}
     scheme = 'https' if use_ssl else 'http'
     url = scheme + '://127.0.0.1:8000/crowds/%s/tasks/'
     for crowd in crowds:
         for i in range(num_requests):
-            response = urllib2.urlopen(url%crowd,
+            try:
+                response = urllib2.urlopen(url%crowd,
                                        urllib.urlencode(params))
+            except urllib2.HTTPError as exc:
+                logging.error("HTTPError occurred while reaching crowd_server")
+                logging.error("Code: %i, Reason: %s", exc.code, exc.reason)
+                logging.error("Server Response Below")
+                logging.error(exc.read())
+                sys.exit(1)
             res = json.loads(response.read())
             if res['status'] != 'ok' :
                 print 'Got something wrong!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
@@ -56,8 +65,10 @@ def create_tasks(crowds, task_types, use_ssl):
 
     if 'sa' in task_types:
         num_tasks, num_assignments = task_types['sa']
-        print ("Creating %d sentiment analysis tasks with %d assignments "
-               "each..." % (num_tasks, num_assignments)),
+        logging.info(
+                "Creating %d sentiment analysis tasks with %d assignments each..."
+                % (num_tasks, num_assignments)
+        )
 
         # Create a sentiment analysis task
         data = {}

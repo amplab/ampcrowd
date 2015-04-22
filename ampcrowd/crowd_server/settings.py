@@ -137,6 +137,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'amt.connection.AMTExceptionMiddleware'
 )
 
 ROOT_URLCONF = 'crowd_server.urls'

@@ -36,10 +36,7 @@ class AMTCrowdInterface(CrowdInterface):
     def delete_tasks(task_objects):
         # Use the boto API to delete the HITs
         for task in task_objects:
-            try:
-                disable_hit(task)
-            except ValueError:
-                pass
+            disable_hit(task)
 
     @staticmethod
     def get_assignment_context(request):
