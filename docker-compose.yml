@@ -14,3 +14,6 @@ web:
     - "8000:8000"
   volumes:
     - .:/usr/src/app
+  environment:
+    DOCKER_SSL: 1
+    C_FORCE_ROOT: 1

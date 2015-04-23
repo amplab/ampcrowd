@@ -85,7 +85,7 @@ HAVE_PUBLIC_IP = True
 PUBLIC_IP = json.loads(urlopen('http://jsonip.com').read())['ip'] if HAVE_PUBLIC_IP else None
 
 # Set the callback for the crowd tasks. For development use /etc/hosts to set crowd_host correctly.
-AMT_CALLBACK_HOST = os.environ.get('AMT_CALLBACK_HOST', 'crowd_host:8000')
+AMT_CALLBACK_HOST = os.environ.get('AMT_CALLBACK_HOST', 'crowd_server:8000')
 
 AMT_DEFAULT_HIT_OPTIONS = { # See documentation in amt/connection.py:create_hit
     'title': 'Generic HIT',
