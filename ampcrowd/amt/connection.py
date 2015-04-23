@@ -68,7 +68,7 @@ def create_hit(hit_options):
     from interface import AMT_INTERFACE
     path = AMT_INTERFACE.get_assignment_url()
 
-    url = (scheme + '://' + json.loads(urlopen('http://jsonip.com').read())['ip'] + ':8000' + path
+    url = (scheme + '://' + settings.PUBLIC_IP + ':8000' + path
            if settings.HAVE_PUBLIC_IP else scheme + '://' + settings.AMT_CALLBACK_HOST + path)
 
     question = ExternalQuestion(

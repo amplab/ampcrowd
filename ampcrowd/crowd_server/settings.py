@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+import json
+from urllib2 import urlopen
 import djcelery
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -79,6 +81,8 @@ POST_BACK_AMT_SANDBOX = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
 # If True, fetch public facing IP address and use as callback, else set to crowd_host
 HAVE_PUBLIC_IP = True
+
+PUBLIC_IP = json.loads(urlopen('http://jsonip.com').read())['ip'] if HAVE_PUBLIC_IP else None
 
 # Set the callback for the crowd tasks. For development use /etc/hosts to set crowd_host correctly.
 AMT_CALLBACK_HOST = os.environ.get('AMT_CALLBACK_HOST', 'crowd_host:8000')
