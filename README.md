@@ -1,4 +1,4 @@
-Crowd Server
+AMPCrowd
 ============
 
 This package provides a django server for running microtasks on various
