@@ -12,3 +12,5 @@ responses.
 Check out our [documentation](https://amplab.github.io/ampcrowd/): you'll
 probably want to start with the
 [installation instructions](https://amplab.github.io/ampcrowd/install.html).
+
+[![Build Status](https://amplab.cs.berkeley.edu/jenkins/buildStatus/icon?job=ampcrowd)](https://amplab.cs.berkeley.edu/jenkins/job/ampcrowd/)
