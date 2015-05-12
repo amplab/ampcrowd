@@ -80,7 +80,7 @@ POST_BACK_AMT = 'https://www.mturk.com/mturk/externalSubmit'
 POST_BACK_AMT_SANDBOX = 'https://workersandbox.mturk.com/mturk/externalSubmit'
 
 # If True, fetch public facing IP address and use as callback, else set to crowd_host
-HAVE_PUBLIC_IP = True
+HAVE_PUBLIC_IP = False
 
 PUBLIC_IP = json.loads(urlopen('http://jsonip.com').read())['ip'] if HAVE_PUBLIC_IP else None
 
@@ -94,7 +94,7 @@ AMT_DEFAULT_HIT_OPTIONS = { # See documentation in amt/connection.py:create_hit
     'duration': 60,
     'num_responses': 3,
     'frame_height': 800,
-    'use_https': SSL_MODE,
+    'use_https': True,
 }
 
 AMT_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY_ID', '')
