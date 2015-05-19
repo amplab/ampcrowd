@@ -4,6 +4,7 @@ title: Crowd-facing APIs
 ---
 
 # Crowd Platform-facing APIs
+{% include toc.md %}
 
 Crowd Platforms may use the following API calls to get tasks for display to
 workers and send crowd responses as they complete work.

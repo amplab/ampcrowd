@@ -4,6 +4,7 @@ title: User-Facing APIs
 ---
 
 # Web Service User-Facing APIs
+{% include toc.md %}
 
 ## Create tasks for a group of points.
 

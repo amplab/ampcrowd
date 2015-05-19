@@ -4,6 +4,7 @@ title: Interfacing with a New Crowd
 ---
 
 # Interfacing with a new crowd
+{% include toc.md %}
 
 The crowd server is designed to be easily extensible to send tasks to other
 crowd systems. Each crowd is implemented as a Django app that can re-use models,

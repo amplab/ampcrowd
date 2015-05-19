@@ -4,6 +4,7 @@ title: Supported Task Types
 ---
 
 # Supported Task Types
+{% include toc.md %}
 
 The following tasks are available by default with AMPCrowd, though you can
 always [add new task types](new_tasks.html).

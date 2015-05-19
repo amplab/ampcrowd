@@ -4,6 +4,7 @@ title: Supported Crowds
 ---
 
 # Supported Crowds
+{% include toc.md %}
 
 The following crowds can be used to process tasks with the crowd server:
 

@@ -4,6 +4,7 @@ title: Adding Task Types
 ---
 
 # Adding Task Types to AMPCrowd
+{% include toc.md %}
 
 You can add your own type of crowd task by following the following steps:
 

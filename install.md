@@ -4,6 +4,8 @@ title: Installation Instructions
 ---
 
 # Installation Instructions
+{% include toc.md %}
+
 
 ## Install and Set up Postgres
 
