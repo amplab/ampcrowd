@@ -10,6 +10,8 @@ This package provides a django server for running microtasks on various crowd pl
 
 Available Documentation:
 
-{% for post in site.html_pages %}
-   * [{{ post.title }}]({{ post.url }})
-{% endfor %}
+* [Installation Instructions](install.html)
+* [User-facing API](user_api.html)
+* [Crowd-facing API](new_crowds.html)
+* [Adding new task types](new_tasks.html)
+* [Supported crowd platforms](available_crowds.html)
