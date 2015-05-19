@@ -10,3 +10,4 @@ celeryd.pid
 
 # jekyll
 _site
+Gemfile.lock
