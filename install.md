@@ -41,7 +41,7 @@ title: Installation Instructions
 
 1. Create a database (right now it's `'ampcrowd'`):
 
-       	  $ createdb -O ampcrowd -U ampcrowd ampcrowd
+       $ createdb -O ampcrowd -U ampcrowd ampcrowd
 
 ## Install RabbitMQ
 
