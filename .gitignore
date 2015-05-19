@@ -7,3 +7,6 @@ celeryd.pid
 
 # Misc
 *.log
+
+# jekyll
+_site
