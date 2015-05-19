@@ -19,8 +19,8 @@ tasks with the server and begin processing them.
   * **configuration**: settings for this group of points, a json dictionary
     with keys:
 
-    * **task_type**: The type of this task, e.g, `'sa'` for sentiment analysis,
-      `'er'` for entity resolution, `'ft'` for filtering tasks.
+    * **task_type**: The type of this task, e.g, `'sa'` for sentiment analysis.
+      Must be one of [the available task types](available_types.html)
 
     * **task_batch_size**: The maximum number of points to show a crowd worker
       in a single task (integer).
@@ -40,69 +40,12 @@ tasks with the server and begin processing them.
 
   * **group_context**: A json dictionary that represents the context that is
     shared among all the points in the group. The contents of the dictionary
-    depend on the task type (see below), but all task types support an
-    **optional** field `instruction` which lets users pass in custom HTML-based
-    instructions. The current avaialble task types are:
-
-    * `'sa'` (Sentiment Analysis): The `group_context` is a json dictionary
-      which is empty or only consists of custom instructions, e.g:
-
-          {
-              "instruction": "<p>For each tweet, decide whether it is positive,
-                              negative, or neutral</p>"
-          }
-
-    * `'er'` (Entity Resolution): In addition to custom instructions, the
-      `group_context` consists of the shared schema for each pair of record. For
-      example:
-
-          {
-              "instruction": "<p>Decide whether two records in each group refer to
-                              the <b>same entity</b>.</p>",
-               "fields": ["price", "location"]
-          }
-
-
-    * `'ft'` (Filtering): In addition to the custom instructions, the
-      `group_context` consists of the shared schema of the records in each
-      question. It is similar to the `group_context` of an entity resolution
-      task. For example:
-
-          {
-              "instruction": "<p>Answer the question in each group.</p>",
-              "fields": ["Conference", "First Author"]
-          }
+    depend on the task type (see
+    [the available task types](available_types.html) for examples).
 
   * **content**: Data necessary to render the crowd interface for the selected
-    task type. Available types are:
-
-    * `'sa'` (Sentiment Analysis). Content should be a json dictionary mapping
-      unique ids to tweet strings, e.g:
-
-          {
-              "aedcf13": "Arsenal won the 4th again!",
-              "4abf23d": "Theo Walcott broke the ligament in his knee last season.",
-              "cf8f93b": "Lebron James back to Cavs--guess he can't handle the Heat."
-          }
-
-    * `'er'` (Entity Resolution). Content should consist of pairs of records for
-      entity resolution, specified as a json dictionary with pairs of records
-      mapped to unique ids, e.g:
-
-          {
-              "aedcf13": [["5", "LA"], ["6", "Berkeley"]],
-              "4abf23d": [["80", "London"], ["80.0", "Londyn"]]
-          }
-
-    * `'ft'` (Filtering). The content for each point should be a json dictionary
-      consisting of a title and the values for each attribute, e.g:
-
-          {
-              "aedcf13": {
-                  "title": "Is this a paper by Michael Franklin (UC Berkeley)?",
-                  "record": ["icde", "Michael Franklin"]
-              }
-          }
+    task type (see [the available task types](available_types.html) for
+    examples).
 
 * Examples:
 
@@ -192,22 +135,9 @@ above), the quality-controlled answer will be sent back to the user.
     * **identifier**: the identifier of the point given when the group was
       created.
 
-    * **value**: the answer value. Values depend on the type of the crowd task.
-      Available types are:
+    * **value**: the answer value. Values depend on the type of the crowd task
+      (see the [list of available types](available_types.html)).
 
-      * `'sa'`: Value should be an integer in [1,5] corresponding to:
-
-        * **1**: Tweet is very negative.
-        * **2**: Tweet is somewhat negative.
-        * **3**: Tweet is neutral.
-        * **4**: Tweet is somewhat positive.
-        * **5**: Tweet is very positive.
-
-      * `'er'`: Value should be either 0.0 or 1.0, indicating 'records do not
-        match' or 'records match', respectively.
-
-      * `'ft'`: Value should be either 0.0 or 1.0, indicating 'the answer to the
-        question is NO' or 'the answer to the question is YES' respectively.
 * Examples:
 
       data={

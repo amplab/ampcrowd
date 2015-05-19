@@ -3,10 +3,10 @@ layout: site
 title: AMPCrowd by amplab
 ---
 
-Welcome!
-========
+# Welcome!
 
-This package provides a django server for running microtasks on various crowd platforms.
+This package provides a django server for running microtasks on various crowd
+platforms.
 
 Available Documentation:
 
