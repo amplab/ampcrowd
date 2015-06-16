@@ -3,16 +3,19 @@
 # Kill old processes
 ./scripts/stop.sh
 
+# Fire up amqp
+rabbitmq-server -detached
+
 # Process options
 
 # Print errors directly to console for easy debugging with -d
 if [ "$1" == "-d" ] || [ "$2" == "-d" ]
 then
     export DEVELOP=1
-    python ampcrowd/manage.py celeryd -l DEBUG &
+    python ampcrowd/manage.py celery worker -l DEBUG --beat &
 else
     export DEVELOP=0
-    python ampcrowd/manage.py celeryd_detach
+    python ampcrowd/manage.py celery worker --beat --detach
 fi
 
 # Enable SSL
@@ -22,9 +25,6 @@ then
 else
     export SSL=0
 fi
-
-# Fire up amqp
-rabbitmq-server -detached
 
 # Run the application
 python ampcrowd/manage.py collectstatic --noinput

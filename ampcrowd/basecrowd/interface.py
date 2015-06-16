@@ -236,3 +236,8 @@ class CrowdRegistry(object):
         if not interface and not model_spec:
             raise ValueError("Invalid crowd name: " + crowd_name)
         return interface, model_spec
+
+    # Get the entire registry
+    @classmethod
+    def get_registry(cls):
+        return cls.registered_crowds

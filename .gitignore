@@ -8,6 +8,7 @@
 
 # Django Celery
 celeryd.pid
+celerybeat-schedule
 
 # Misc
 *.log

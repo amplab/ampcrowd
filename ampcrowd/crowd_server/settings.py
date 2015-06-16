@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from datetime import timedelta
 import os
 import json
 from urllib2 import urlopen
@@ -66,10 +67,26 @@ if SSL_MODE:
 
 # Celery Configuration
 djcelery.setup_loader()
+CELERYBEAT_SCHEDULE = {
+    'post-retainer-tasks': {
+        'task': 'basecrowd.tasks.post_retainer_tasks',
+        'schedule': timedelta(seconds=10),
+        'args': (),
+    },
+}
 
 # Set broker using hosts entry for 'rabbitmq'. This is set for Docker but can be set to alias
 # localhost in /hosts/etc if needed
 BROKER_URL = "amqp://guest:guest@rabbitmq:5672//"
+
+# Settings for retainer pools
+#############################
+
+# How long since last ping before we declare that a worker has left the pool.
+PING_TIMEOUT_SECONDS = 10
+
+# How long should we keep a retainer task up before refreshing it.
+RETAINER_TASK_EXPIRATION_SECONDS = 180
 
 # Settings for the AMT app
 # AMT_SANDBOX = True # run on the sandbox, or on the real deal?
