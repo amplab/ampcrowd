@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db import models
 from django.db.models.signals import class_prepared
 from django.contrib.contenttypes import generic
@@ -5,12 +7,35 @@ from django.contrib.contenttypes.models import ContentType
 
 
 # Model for a group of tasks
+class TaskGroupRetainerStatus:
+    WAITING = 0 # Waiting for a pool to recruit workers
+    RUNNING = 1 # Running in a retainer pool
+    DONE = 2 # Completed
+
+
 class AbstractCrowdTaskGroup(models.Model):
+
+    # Status of this task group in its retainer pool, if it has one.
+    RETAINER_STATUSES = (
+        (TaskGroupRetainerStatus.WAITING, 'waiting'),
+        (TaskGroupRetainerStatus.RUNNING, 'running'),
+        (TaskGroupRetainerStatus.DONE, 'done'),
+    )
+    retainer_pool_status = models.IntegerField(
+        choices=RETAINER_STATUSES, null=True)
+
+    # The retainer pool that will run this group of tasks, a many-to-one
+    # relationship. The relationship will be auto-generated to the retainer_pool
+    # class of the registered crowd, and can be accessed via the 'retainer_pool'
+    # attribute. The related_name will be 'task_groups' to enable reverse
+    # lookups. This field will be null if the task group isn't executed by a
+    # retainer pool. e.g. retainer_pool = models.ForeignKey(
+    #   RetainerPool, null=True, related_name='task_groups')
 
     # The group id
     group_id = models.CharField(primary_key=True, max_length=64)
 
-    # The number of HITs in this group that have been finished
+    # The number of tasks in this group that have been finished
     tasks_finished = models.IntegerField()
 
     # The call back URL for sending results once complete
@@ -23,7 +48,10 @@ class AbstractCrowdTaskGroup(models.Model):
     crowd_config = models.TextField()
 
     def __unicode__(self):
-        return self.group_id
+        ret = "Task Group %s" % self.group_id
+        if self.retainer_pool_status is not None:
+            ret += " (retainer)"
+        return ret
 
     class Meta:
         abstract = True
@@ -81,6 +109,9 @@ class AbstractCrowdWorker(models.Model):
     # A unique id for the worker
     worker_id = models.CharField(primary_key=True, max_length=64)
 
+    # The last time this worker pinged the server from a retainer pool
+    last_ping = models.DateTimeField(null=True)
+
     def __unicode__(self):
         return self.worker_id
 
@@ -97,7 +128,7 @@ class AbstractCrowdWorkerResponse(models.Model):
     # The related_name will be 'responses' to enable reverse lookups, e.g.
     # task = models.ForeignKey(CrowdTask, related_name='responses')
 
-    # The worker that gave the responded, a many-to-one relationship.
+    # The worker that gave the response, a many-to-one relationship.
     # The relationship will be auto-generated to the worker class of the
     # registered crowd, and can be accessed via the 'worker' attribute.
     # The related_name will be 'responses' to enable reverse lookups, e.g.
@@ -116,22 +147,83 @@ class AbstractCrowdWorkerResponse(models.Model):
         abstract = True
 
 
+# Status of a Retainer Pool
+class RetainerPoolStatus:
+    CREATED = 1 # Pool has been created, but there are no workers yet
+    RECRUITING = 2 # Pool is recruiting workers to capacity
+    IDLE = 3 # Pool is at worker capacity, and is ready to run tasks
+    ACTIVE = 4 # Pool is running task groups
+
+
+# Model for a pool of workers
+class AbstractRetainerPool(models.Model):
+
+    # The workers in the pool, a many-to-many relationship.
+    # The relationship will be auto-generated to the worker class of the
+    # registered crowd, and can be accessed via the 'workers' attribute.
+    # The related_name will be 'pools' to enable reverse lookups, e.g.
+    # workers = models.ManyToManyField(CrowdTask, related_name='pools')
+
+    # The status of this pool.
+    STATUSES = (
+        (RetainerPoolStatus.CREATED, 'created'),
+        (RetainerPoolStatus.RECRUITING, 'recruiting'),
+        (RetainerPoolStatus.IDLE, 'idle'),
+        (RetainerPoolStatus.ACTIVE, 'active'),
+    )
+    status = models.IntegerField(choices=STATUSES,
+                                 default=RetainerPoolStatus.CREATED)
+
+    # Number of workers desired in the pool
+    capacity = models.IntegerField()
+
+    # External identifier for this pool (for re-use)
+    external_id = models.CharField(max_length=200)
+
+    def __unicode__(self):
+        return "Retainer Pool %s: capacity %d, status %s" % (
+            self.external_id, self.capacity, self.get_status_display())
+
+    @property
+    def active_workers(self):
+        time_cutoff = datetime.now() - settings.PING_TIMEOUT_SECONDS
+        return self.workers.filter(last_ping__gte=time_cutoff)
+
+    class Meta:
+        abstract = True
+
+
+# A "proto-task" that loads for a retainer pool.
+# Not abstract because crowd implementations should never see it.
+# Just used to share state between runs of the post_retainer_tasks celery task.
+class RetainerTask(models.model):
+
+    # Is this task active on the crowd site?
+    active = models.BooleanField(default=True)
+
+    # When was this task posted?
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 # Register a set of models as a new crowd.
 class CrowdModelSpecification(object):
     def __init__(self, crowd_name,
                  task_model,
                  group_model,
                  worker_model,
-                 response_model):
+                 response_model,
+                 retainer_pool_model=None):
         self.name = crowd_name
         self.task_model = task_model
         self.group_model = group_model
         self.worker_model = worker_model
         self.response_model = response_model
+        self.retainer_pool_model = retainer_pool_model
 
     @staticmethod
-    def add_rel(from_cls, to_cls, relation_cls, relation_name, related_name=None):
-        field = relation_cls(to_cls, related_name=related_name)
+    def add_rel(from_cls, to_cls, relation_cls, relation_name,
+                related_name=None, **field_kwargs):
+        field = relation_cls(to_cls, related_name=related_name, **field_kwargs)
         field.contribute_to_class(from_cls, relation_name)
 
     def add_model_rels(self):
@@ -150,3 +242,13 @@ class CrowdModelSpecification(object):
         # responses pertain to a task
         self.add_rel(self.response_model, self.task_model, models.ForeignKey,
                      'task', 'responses')
+
+        if self.retainer_pool_model:
+            # pools contain workers
+            self.add_rel(self.retainer_pool_model, self.worker_model,
+                         models.ManyToManyField, 'workers', 'pools')
+
+            # task groups might be run by pools
+            self.add_rel(self.group_model, self.retainer_pool_model,
+                         models.ForeignKey, 'retainer_pool', 'task_groups',
+                         null=True)
