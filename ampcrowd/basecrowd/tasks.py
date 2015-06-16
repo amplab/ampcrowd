@@ -101,4 +101,4 @@ def post_retainer_tasks():
                 retainer_task.save()
             except Exception, e:
                 logger.warning('Could not remove %s: %s' % (retainer_task,
-                                                            str(e))
+                                                            str(e)))

@@ -196,7 +196,7 @@ class AbstractRetainerPool(models.Model):
 # A "proto-task" that loads for a retainer pool.
 # Not abstract because crowd implementations should never see it.
 # Just used to share state between runs of the post_retainer_tasks celery task.
-class RetainerTask(models.model):
+class RetainerTask(models.Model):
 
     # Is this task active on the crowd site?
     active = models.BooleanField(default=True)
