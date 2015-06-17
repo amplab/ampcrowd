@@ -65,12 +65,30 @@ if SSL_MODE:
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
 
+# Settings for retainer pools
+#############################
+
+# How long since last ping before we declare that a worker has left the pool.
+PING_TIMEOUT_SECONDS = 10
+
+# How long should we keep a retainer task up before refreshing it.
+RETAINER_TASK_EXPIRATION_SECONDS = 60
+
+# Number of tasks to post simultaneously for a single retainer slot.
+NUM_RETAINER_RECRUITMENT_TASKS = 7
+
+# How frequently to re-run the retainer task posting script.
+RETAINER_POST_TASKS_INTERVAL = 20 # seconds
+
+# Settings for AMQP /Celery
+###########################
+
 # Celery Configuration
 djcelery.setup_loader()
 CELERYBEAT_SCHEDULE = {
     'post-retainer-tasks': {
         'task': 'basecrowd.tasks.post_retainer_tasks',
-        'schedule': timedelta(seconds=10),
+        'schedule': timedelta(seconds=RETAINER_POST_TASKS_INTERVAL),
         'args': (),
     },
 }
@@ -79,16 +97,9 @@ CELERYBEAT_SCHEDULE = {
 # localhost in /hosts/etc if needed
 BROKER_URL = "amqp://guest:guest@rabbitmq:5672//"
 
-# Settings for retainer pools
-#############################
-
-# How long since last ping before we declare that a worker has left the pool.
-PING_TIMEOUT_SECONDS = 10
-
-# How long should we keep a retainer task up before refreshing it.
-RETAINER_TASK_EXPIRATION_SECONDS = 180
-
 # Settings for the AMT app
+##########################
+
 # AMT_SANDBOX = True # run on the sandbox, or on the real deal?
 AMT_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 # AMT_SANDBOX_WORKER_SUBMIT = 'https://workersandbox.mturk.com/mturk/externalSubmit'

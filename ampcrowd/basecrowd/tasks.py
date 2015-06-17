@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime, timedelta
 import logging
 import json
@@ -64,34 +65,44 @@ def post_retainer_tasks():
             if pool.active_workers.count() < pool.capacity:
                 logger.info("Posting tasks for %s" % pool)
 
-                # Create a dummy task on the crowd platform
+                now = timezone.now()
+                if (pool.last_recruited_at > now - timedelta(
+                        seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS)):
+                    logger.info("Pool was recruited recently... skipping.")
+                    continue
+                pool.last_recruited_at = now
+                pool.save()
+
+                # Create dummy tasks on the crowd platform
                 dummy_content = json.dumps({})
                 group = pool.task_groups.order_by('created_at')[0]
                 dummy_config = {
                     'num_assignments': 1,
-                    'task_type': 'retainer_dummy',
+                    'task_type': 'retainer',
                     'task_batch_size': 1,
                     'callback_url': '',
                     crowd_name: json.loads(group.crowd_config),
                 }
-                task_id = crowd_interface.create_task(dummy_config, dummy_content)
+                for i in range(1, settings.NUM_RETAINER_RECRUITMENT_TASKS + 1):
+                    task_config = copy.deepcopy(dummy_config)
+                    task_config[crowd_name]['title'] += " [" + str(i) + "]"
+                    task_id = crowd_interface.create_task(task_config, dummy_content)
 
-                # skip interface.task_pre_save because this isn't a real task.
-                task = crowd_model_spec.task_model.objects.create(
-                    task_type=dummy_config['task_type'],
-                    data=dummy_content,
-                    create_time=timezone.now(),
-                    task_id=task_id,
-                    group=pool.task_groups.order_by('created_at')[0],
-                    num_assignments=1
-                )
-                logger.info("Created Task %s" % task_id)
+                    # skip interface.task_pre_save because this isn't a real task.
+                    task = crowd_model_spec.task_model.objects.create(
+                        task_type=dummy_config['task_type'],
+                        data=dummy_content,
+                        create_time=timezone.now(),
+                        task_id=task_id,
+                        group=pool.task_groups.order_by('created_at')[0],
+                        num_assignments=1
+                    )
+                    logger.info("Created Task %s" % task_id)
 
-                # Create the retainer task to remember it.
-                retainer_task = RetainerTask.objects.create(
-                    task=task, crowd_name=crowd_name)
-                logger.info("Created %s" % retainer_task)
-
+                    # Create the retainer task to remember it.
+                    retainer_task = RetainerTask.objects.create(
+                        task=task, crowd_name=crowd_name)
+                    logger.info("Created %s" % retainer_task)
 
             # if a pool has finished recruiting, start tasks appropriately
             elif pool.status == RetainerPoolStatus.RECRUITING:

@@ -96,7 +96,7 @@ def create_tasks(crowds, task_types, use_ssl, retainer):
         }
         add_retainer_config(data, retainer)
 
-        data['group_id'] = 'test1'
+        data['group_id'] = 'sa ' + str(uuid.uuid4())
         data['group_context'] = {}  # Empty group contest for sentiment analysis
 
         # This configuration generates one task, with three tweets.
@@ -122,7 +122,7 @@ def create_tasks(crowds, task_types, use_ssl, retainer):
         data['configuration']['amt'] = {'sandbox' : True}
         add_retainer_config(data, retainer)
 
-        data['group_id'] = 'test2'
+        data['group_id'] = 'er ' + str(uuid.uuid4())
         data['group_context'] = {'fields' : ['price', 'location']}
 
         # This configuration generates one task with two pairs of records.
@@ -146,7 +146,7 @@ def create_tasks(crowds, task_types, use_ssl, retainer):
         data['configuration']['amt'] = {'sandbox' : True}
         add_retainer_config(data, retainer)
 
-        data['group_id'] = 'test3'
+        data['group_id'] = 'ft ' + str(uuid.uuid4())
         data['group_context'] = {'fields' : ['city', 'cuisine']}
 
         # This configuration generates one tasks with two pairs of records.

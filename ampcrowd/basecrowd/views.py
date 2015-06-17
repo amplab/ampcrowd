@@ -46,6 +46,9 @@ def create_task_group(request, crowd_name):
     point_identifiers = content.keys()
 
     # Create a new group for the tasks.
+    if model_spec.group_model.objects.filter(group_id=group_id).exists():
+        # group id is taken
+        return HttpResponse(json.dumps(wrong_response))
     current_group = model_spec.group_model(
         group_id=group_id,
         tasks_finished=0,
@@ -185,9 +188,6 @@ def get_assignment(request, crowd_name):
     except model_spec.task_model.DoesNotExist:
         raise ValueError('Invalid task id: ' + context['task_id'])
 
-    content = json.loads(current_task.data)
-    group_context = json.loads(current_task.group.group_context)
-
     # Save the information of this worker
     worker_id = context.get('worker_id')
     if worker_id:
@@ -212,6 +212,8 @@ def get_assignment(request, crowd_name):
             current_worker.tasks.add(current_task)
 
     # Add task data to the context.
+    content = json.loads(current_task.data)
+    group_context = json.loads(current_task.group.group_context)
     crowd_config = json.loads(current_task.group.crowd_config)
     context.update(group_context=group_context,
                    content=content,

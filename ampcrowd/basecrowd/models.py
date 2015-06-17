@@ -50,7 +50,7 @@ class AbstractCrowdTaskGroup(models.Model):
     crowd_config = models.TextField()
 
     # When the group was created
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __unicode__(self):
         ret = "Task Group %s" % self.group_id
@@ -181,6 +181,11 @@ class AbstractRetainerPool(models.Model):
     )
     status = models.IntegerField(choices=STATUSES,
                                  default=RetainerPoolStatus.CREATED)
+
+    # The last time at which recruitment tasks were posted
+    last_recruited_at = models.DateTimeField(
+        default=timezone.now() -
+        timedelta(seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS))
 
     # Number of workers desired in the pool
     capacity = models.IntegerField()
