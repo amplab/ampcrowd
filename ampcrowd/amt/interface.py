@@ -16,7 +16,7 @@ class AMTCrowdInterface(CrowdInterface):
         # Validate the configuration specific to amt
         try:
             CrowdInterface.require_context(
-                configuration, 
+                configuration,
                 ['sandbox'],
                 ValueError())
 
