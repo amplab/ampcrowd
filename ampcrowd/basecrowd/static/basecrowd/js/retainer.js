@@ -1,3 +1,5 @@
+// Adapted from https://github.com/uid/realtime-turk
+
 var Retainer = {
 	aid: null,
 	wid: null,
