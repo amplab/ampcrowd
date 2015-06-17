@@ -199,6 +199,20 @@ class CrowdInterface(object):
                  'callback_url'],
                 ValueError())
 
+            # require retainer pool sub-options, if present
+            if 'retainer_pool' in configuration:
+                retainer_config = configuration['retainer_pool']
+                if retainer_config.get('create_pool', True):
+                    self.require_context(
+                        retainer_config,
+                        ['pool_size'],
+                        ValueError())
+                else:
+                    self.require_context(
+                        retainer_config,
+                        ['pool_id'],
+                        ValueError())
+
         except ValueError:
             return False
 
@@ -211,8 +225,6 @@ class CrowdInterface(object):
         # Do crowd-specific validation
         crowd_config = configuration.get(self.crowd_name, {})
         return self.validate_configuration(crowd_config)
-
-    # Get the appropriate model class
 
 
 class CrowdRegistry(object):

@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db import models
 from django.db.models.signals import class_prepared
+from django.conf import settings
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
 
 # Model for a group of tasks
@@ -47,6 +49,9 @@ class AbstractCrowdTaskGroup(models.Model):
     # The configuration specific to current crowd type
     crowd_config = models.TextField()
 
+    # When the group was created
+    created_at = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         ret = "Task Group %s" % self.group_id
         if self.retainer_pool_status is not None:
@@ -89,6 +94,9 @@ class AbstractCrowdTask(models.Model):
 
     # Has the task received enough responses?
     is_complete = models.BooleanField(default=False)
+
+    # Is this task a retainer task?
+    is_retainer = models.BooleanField(default=False)
 
     def __unicode__(self):
         return self.task_type + " : " + self.data
@@ -178,7 +186,13 @@ class AbstractRetainerPool(models.Model):
     capacity = models.IntegerField()
 
     # External identifier for this pool (for re-use)
-    external_id = models.CharField(max_length=200)
+    external_id = models.CharField(max_length=200, unique=True)
+
+    def save(self, *args, **kwargs):
+        models.Model.save(self, *args, **kwargs)
+        if self.external_id == '':
+            self.external_id = str(self.id)
+            self.save()
 
     def __unicode__(self):
         return "Retainer Pool %s: capacity %d, status %s" % (
@@ -186,7 +200,8 @@ class AbstractRetainerPool(models.Model):
 
     @property
     def active_workers(self):
-        time_cutoff = datetime.now() - settings.PING_TIMEOUT_SECONDS
+        time_cutoff = timezone.now() - timedelta(
+            seconds=settings.PING_TIMEOUT_SECONDS)
         return self.workers.filter(last_ping__gte=time_cutoff)
 
     class Meta:
@@ -203,6 +218,18 @@ class RetainerTask(models.Model):
 
     # When was this task posted?
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # The actual task created (a generic foreign key, since it must point to the
+    # task class of multiple crowds).
+    content_type = models.ForeignKey(ContentType)
+    object_id = models.CharField(max_length=64)
+    task = generic.GenericForeignKey('content_type', 'object_id')
+
+    # The crowd this task runs on
+    crowd_name = models.CharField(max_length=64)
+
+    def __unicode__(self):
+        return "Retainer Task %d" % self.id
 
 
 # Register a set of models as a new crowd.

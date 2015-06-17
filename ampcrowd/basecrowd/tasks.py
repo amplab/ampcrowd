@@ -4,6 +4,8 @@ import json
 import urllib
 import urllib2
 
+from django.conf import settings
+from django.utils import timezone
 from djcelery import celery
 
 from basecrowd.interface import CrowdRegistry
@@ -60,12 +62,36 @@ def post_retainer_tasks():
         for pool in crowd_model_spec.retainer_pool_model.objects.filter(
                 status__in=valid_states):
             if pool.active_workers.count() < pool.capacity:
-
-                # Post retainer tasks for the pool
                 logger.info("Posting tasks for %s" % pool)
-                # TODO: actually post HITs
-                retainer_task = RetainerTask.objects.create()
+
+                # Create a dummy task on the crowd platform
+                dummy_content = json.dumps({})
+                group = pool.task_groups.order_by('created_at')[0]
+                dummy_config = {
+                    'num_assignments': 1,
+                    'task_type': 'retainer_dummy',
+                    'task_batch_size': 1,
+                    'callback_url': '',
+                    crowd_name: json.loads(group.crowd_config),
+                }
+                task_id = crowd_interface.create_task(dummy_config, dummy_content)
+
+                # skip interface.task_pre_save because this isn't a real task.
+                task = crowd_model_spec.task_model.objects.create(
+                    task_type=dummy_config['task_type'],
+                    data=dummy_content,
+                    create_time=timezone.now(),
+                    task_id=task_id,
+                    group=pool.task_groups.order_by('created_at')[0],
+                    num_assignments=1
+                )
+                logger.info("Created Task %s" % task_id)
+
+                # Create the retainer task to remember it.
+                retainer_task = RetainerTask.objects.create(
+                    task=task, crowd_name=crowd_name)
                 logger.info("Created %s" % retainer_task)
+
 
             # if a pool has finished recruiting, start tasks appropriately
             elif pool.status == RetainerPoolStatus.RECRUITING:
@@ -91,14 +117,22 @@ def post_retainer_tasks():
     logger.info('Removing old retainer tasks...')
     for retainer_task in RetainerTask.objects.filter(active=True):
         old_task_cutoff = (
-            datetime.now()
-            - timedelta(settings.RETAINER_TASK_EXPIRATION_SECONDS))
+            timezone.now()
+            - timedelta(seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS))
         if retainer_task.created_at < old_task_cutoff:
             try:
-                logger.info('Removing old retainer task %s' % retainer_task)
-                # TODO: remove task from crowd
+                # delete the underlying task object
+                interface, _ = CrowdRegistry.get_registry_entry(
+                    retainer_task.crowd_name)
+                interface.delete_tasks([retainer_task.task,])
+                retainer_task.task.delete()
+                logger.info("Deleted old task %s" % retainer_task.task)
+
+                # delete the retainer task
                 retainer_task.active = False
                 retainer_task.save()
+                logger.info('Deleted old retainer task %s' % retainer_task)
+
             except Exception, e:
-                logger.warning('Could not remove %s: %s' % (retainer_task,
-                                                            str(e)))
+                logger.warning('Could not remove task %s: %s' % (
+                    retainer_task.task, str(e)))

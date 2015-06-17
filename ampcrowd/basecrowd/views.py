@@ -11,6 +11,8 @@ import os
 import logging
 
 from basecrowd.interface import CrowdRegistry
+from basecrowd.models import TaskGroupRetainerStatus
+from basecrowd.models import RetainerPoolStatus
 from basecrowd.tasks import gather_answer
 
 logger = logging.getLogger('crowd_server')
@@ -55,33 +57,92 @@ def create_task_group(request, crowd_name):
     interface.group_pre_save(current_group)
     current_group.save()
 
-    # Create a task for each batch of points.
-    for i in range(0, len(point_identifiers), configuration['task_batch_size']):
+    # Build crowd tasks from the group
+    if 'retainer_pool' in configuration: # Retainer pool tasks
 
-        # build the batch
-        current_content = {}
-        for j in range(i, i + configuration['task_batch_size']):
+        # The specified crowd must support retainer pools
+        retainer_pool_model = model_spec.retainer_pool_model
+        if not retainer_pool_model:
+            return HttpResponse(json.dumps(wrong_response))
 
-            if j >= len(point_identifiers):
-                break
-            current_content[point_identifiers[j]] = content[point_identifiers[j]]
-        current_content = json.dumps(current_content)
+        # Create or find the retainer pool.
+        retainer_config = configuration['retainer_pool']
+        create_pool = retainer_config['create_pool']
+        pool_id = retainer_config.get('pool_id', '')
+        if create_pool:
+            (retainer_pool, created) = retainer_pool_model.objects.get_or_create(
+                external_id=pool_id,
+                defaults={
+                    'capacity': retainer_config['pool_size'],
+                    'status': RetainerPoolStatus.RECRUITING,
+                })
+            if created == False: # pool id already taken
+                return HttpResponse(json.dumps(wrong_response))
 
-        # Call the create task hook
-        current_task_id = interface.create_task(configuration, current_content)
+        else:
+            try:
+                retainer_pool = retainer_pool_model.objects.get(
+                    external_id=pool_id)
 
-        # Build the task object
-        current_task = model_spec.task_model(
-            task_type=configuration['task_type'],
-            data=current_content,
-            create_time=pytz.utc.localize(datetime.now()),
-            task_id=current_task_id,
-            group=current_group,
-            num_assignments=configuration['num_assignments'])
+                # TODO: Make sure this pool is compatible with the new task group
+            except retainer_pool_model.DoesNotExist:
+                # clean up
+                current_group.delete()
+                return HttpResponse(json.dumps(wrong_response))
+        current_group.retainer_pool = retainer_pool
 
-        # Call the pre-save hook, then save the task to the database.
-        interface.task_pre_save(current_task)
-        current_task.save()
+        # Don't call interface.create_task, the `post_retainer_tasks` celery
+        # task will do so.
+        # Create the tasks (1 point per task)
+        for point_id, point_content in content.iteritems():
+            task = model_spec.task_model(
+                task_type=configuration['task_type'],
+                data=json.dumps({point_id: content}),
+                create_time=pytz.utc.localize(datetime.now()),
+                task_id=point_id,
+                group=current_group,
+                num_assignments=configuration['num_assignments'],
+                is_retainer=True,
+            )
+            interface.task_pre_save(task)
+            task.save()
+
+        # start the work right away if the pool is ready
+        if retainer_pool.status in [RetainerPoolStatus.IDLE,
+                                    RetainerPoolStatus.ACTIVE]:
+            current_group.retainer_pool_status = TaskGroupRetainerStatus.RUNNING
+        current_group.save()
+
+    else: # Not retainer, create a task for each batch of points.
+        for i in range(0, len(point_identifiers),
+                       configuration['task_batch_size']):
+
+            # build the batch
+            current_content = {}
+            for j in range(i, i + configuration['task_batch_size']):
+
+                if j >= len(point_identifiers):
+                    break
+                current_content[point_identifiers[j]] = content[
+                    point_identifiers[j]]
+            current_content = json.dumps(current_content)
+
+            # Call the create task hook
+            current_task_id = interface.create_task(configuration,
+                                                    current_content)
+
+            # Build the task object
+            current_task = model_spec.task_model(
+                task_type=configuration['task_type'],
+                data=current_content,
+                create_time=pytz.utc.localize(datetime.now()),
+                task_id=current_task_id,
+                group=current_group,
+                num_assignments=configuration['num_assignments'])
+
+            # Call the pre-save hook, then save the task to the database.
+            interface.task_pre_save(current_task)
+            current_task.save()
 
     return HttpResponse(json.dumps(correct_response))
 
