@@ -170,7 +170,7 @@ class AbstractRetainerPool(models.Model):
     # The relationship will be auto-generated to the worker class of the
     # registered crowd, and can be accessed via the 'workers' attribute.
     # The related_name will be 'pools' to enable reverse lookups, e.g.
-    # workers = models.ManyToManyField(CrowdTask, related_name='pools')
+    # workers = models.ManyToManyField(CrowdWorker, related_name='pools')
 
     # The status of this pool.
     STATUSES = (

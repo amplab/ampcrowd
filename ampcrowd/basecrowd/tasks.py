@@ -41,6 +41,7 @@ def submit_callback_answer(current_task):
     urllib2.urlopen(url, urllib.urlencode(params))
 
 # Recruit for retainer pools by auto-posting tasks as necessary.
+# TODO: worry about concurrency if multiple of these run at once.
 @celery.task
 def post_retainer_tasks():
     logger = logging.getLogger(__name__)
@@ -90,12 +91,12 @@ def post_retainer_tasks():
 
                     # skip interface.task_pre_save because this isn't a real task.
                     task = crowd_model_spec.task_model.objects.create(
-                        task_type=dummy_config['task_type'],
+                        task_type=task_config['task_type'],
                         data=dummy_content,
                         create_time=timezone.now(),
                         task_id=task_id,
                         group=pool.task_groups.order_by('created_at')[0],
-                        num_assignments=1
+                        num_assignments=task_config['num_assignments'],
                     )
                     logger.info("Created Task %s" % task_id)
 
@@ -124,6 +125,9 @@ def post_retainer_tasks():
                         task_group.save()
                 pool.save()
 
+            else:
+                logger.info("%s has status %s, nothing to do." % (pool, pool.get_status_display()))
+
     # Delete old retainerTasks to keep the listings fresh
     logger.info('Removing old retainer tasks...')
     for retainer_task in RetainerTask.objects.filter(active=True):
@@ -132,12 +136,16 @@ def post_retainer_tasks():
             - timedelta(seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS))
         if retainer_task.created_at < old_task_cutoff:
             try:
-                # delete the underlying task object
-                interface, _ = CrowdRegistry.get_registry_entry(
-                    retainer_task.crowd_name)
-                interface.delete_tasks([retainer_task.task,])
-                retainer_task.task.delete()
-                logger.info("Deleted old task %s" % retainer_task.task)
+                # delete the underlying task object if no one has accepted it.
+                if not retainer_task.task.workers.exists():
+                    interface, _ = CrowdRegistry.get_registry_entry(
+                        retainer_task.crowd_name)
+                    interface.delete_tasks([retainer_task.task,])
+                    retainer_task.task.delete()
+                    logger.info("Deleted old task %s" % retainer_task.task)
+                else:
+                    logger.info("Not deleting %s, it has a worker."
+                                % retainer_task.task)
 
                 # delete the retainer task
                 retainer_task.active = False

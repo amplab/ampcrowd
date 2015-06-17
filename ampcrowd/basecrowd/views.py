@@ -181,7 +181,7 @@ def get_assignment(request, crowd_name):
         template = get_scoped_template(crowd_name, 'unavailable.html')
         return HttpResponse(template.render(RequestContext(request, {})))
 
-    # Retrieve the tweet based on task_id from the database
+    # Retrieve the task based on task_id from the database
     try:
         current_task = model_spec.task_model.objects.get(
             task_id=context['task_id'])
@@ -196,7 +196,7 @@ def get_assignment(request, crowd_name):
                 worker_id=worker_id)
         except model_spec.worker_model.DoesNotExist:
             current_worker = model_spec.worker_model(
-                worker_id=context['worker_id'])
+                worker_id=worker_id)
 
             # Call the pre-save hook, the save to the database
             interface.worker_pre_save(current_worker)
@@ -210,6 +210,9 @@ def get_assignment(request, crowd_name):
             raise ValueError("Accepted tasks must have an associated worker.")
         if not current_worker.tasks.filter(task_id=current_task.task_id).exists():
             current_worker.tasks.add(current_task)
+
+        if current_task.task_type == 'retainer':
+            current_worker.pools.add(current_task.group.retainer_pool)
 
     # Add task data to the context.
     content = json.loads(current_task.data)

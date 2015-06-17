@@ -1,0 +1,30 @@
+{% extends base_template_name %}
+<!-- Add HTML to display an interface to the crowd for completing tasks of a new type.
+
+This template will display a single-screen interface to the crowd for gathering labels of one or more items of the same
+task type. To define your task type, copy this template, then fill in the blocks below.
+
+Note: Twitter Bootstrap CSS classes will be available for styling.
+
+-->
+
+{% block jslibraries %}
+    {{ block.super }}
+    <script type='text/javascript' src='https://raw.githubusercontent.com/uid/realtime-turk/master/retainer/static/retainer.js'></script>
+{% endblock jslibraries %}
+
+{% block customjs %}
+    {{ block.super }}
+{% endblock customjs %}
+
+{% block default_instruction %}
+<p> This will be a retainer task--we will show you various tasks inside this!</p>
+{% endblock %}
+
+{% block item_data %}
+<p>Hopefully unnecessary</p>
+{% endblock %}
+
+{% block item_labels %}
+<p>Hopefully really unnecessary</p>
+{% endblock %}
