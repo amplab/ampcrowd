@@ -10,12 +10,27 @@ Note: Twitter Bootstrap CSS classes will be available for styling.
 
 {% block jslibraries %}
     {{ block.super }}
-    <script type='text/javascript' src='https://raw.githubusercontent.com/uid/realtime-turk/master/retainer/static/retainer.js'></script>
+    <script type='text/javascript' src='/static/basecrowd/js/retainer.js'></script>
 {% endblock jslibraries %}
 
 {% block customjs %}
     {{ block.super }}
 {% endblock customjs %}
+
+{% block ready_func %}
+{{ block.super }}
+
+// Initialize the retainer object
+PING_ENDPOINT = "todo"
+WORK_ENDPOINT = "todo"
+PING_INTERVAL = 2500
+WORK_INTERVAL = 1000
+$(document).ready(function()
+{
+    var context = prepare_submit_data()
+    Retainer.init(context.workerId, context.assignmentId, context.HITId)
+});
+{% endblock ready_func %}
 
 {% block default_instruction %}
 <p> This will be a retainer task--we will show you various tasks inside this!</p>

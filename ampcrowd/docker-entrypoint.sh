@@ -33,7 +33,7 @@ export FOREGROUND
 if [ "$DEVELOP" -eq  "1" ]
 then
 	echo "Celery launched in debug mode"
-	python ampcrowd/manage.py celeryd -l DEBUG &
+	python ampcrowd/manage.py celery worker -l DEBUG --beat &
 	if [ "$SSL" -eq "1" ]
 	then
 		echo "Gunicorn starting"
@@ -43,7 +43,7 @@ then
 	fi
 else
 	echo "Celery launched in production mode"
-	python ampcrowd/manage.py celeryd_detach
+	python ampcrowd/manage.py celery worker --beat --detach
 	echo "Gunicorn starting"
 	(cd ampcrowd && gunicorn -c ../deploy/gunicorn_config.py crowd_server.wsgi:application)
 fi
