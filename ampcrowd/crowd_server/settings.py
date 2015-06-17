@@ -72,7 +72,7 @@ if SSL_MODE:
 PING_TIMEOUT_SECONDS = 10
 
 # How long should we keep a retainer task up before refreshing it.
-RETAINER_TASK_EXPIRATION_SECONDS = 60
+RETAINER_TASK_EXPIRATION_SECONDS = 180
 
 # Number of tasks to post simultaneously for a single retainer slot.
 NUM_RETAINER_RECRUITMENT_TASKS = 7
