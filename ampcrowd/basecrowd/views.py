@@ -1,5 +1,6 @@
 from django.template import RequestContext, TemplateDoesNotExist
 from django.template.loader import get_template, select_template
+from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
@@ -221,7 +222,8 @@ def get_assignment(request, crowd_name):
     context.update(group_context=group_context,
                    content=content,
                    backend_submit_url=interface.get_backend_submit_url(),
-                   frontend_submit_url=interface.get_frontend_submit_url(crowd_config))
+                   frontend_submit_url=interface.get_frontend_submit_url(crowd_config),
+                   crowd_name=crowd_name)
 
     # Load the template and render it.
     template = get_scoped_template(crowd_name, current_task.task_type + '.html',
@@ -288,3 +290,20 @@ def post_response(request, crowd_name):
         gather_answer.delay(current_task.task_id, model_spec)
 
     return HttpResponse('ok')  # AJAX call succeded.
+
+# Views related to Retainer Pool tasks
+#######################################
+
+@require_POST
+@csrf_exempt
+def ping(request, crowd_name, worker_id, task_id, ping_type):
+    interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
+    task = model_spec.task_model.objects.get(task_id=task_id)
+    worker = model_spec.worker_model.objects.get(worker_id=worker_id)
+
+    # TODO: track ping type?
+    # TODO: make this not broken when a worker is in multiple pools
+    worker.last_ping = timezone.now()
+    worker.save()
+
+    return HttpResponse('ok')

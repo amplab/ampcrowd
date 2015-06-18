@@ -6,21 +6,21 @@ var Retainer = {
 	hid: null,
 	ping_type: 'waiting',
 
-	init: function(worker_id, assignment_id, hit_id){
+	init: function(worker_id, assignment_id, task_id){
 		Retainer.aid = assignment_id
 		Retainer.wid = worker_id
-		Retainer.hid = hit_id
+		Retainer.tid = task_id
 
-		Retainer.ping(worker_id, assignment_id, hit_id, Retainer.ping_type)
+		Retainer.ping(worker_id, assignment_id, task_id, Retainer.ping_type)
 		Retainer.checkForWork(assignment_id)
 	},
 
-	ping: function(worker_id, assignment_id, hit_id, ping_type){
-		$.get(PING_ENDPOINT +
-			'worker/' + worker_id + '/assignment/' + assignment_id + '/hit/' + hit_id + '/event/' + ping_type, 
+	ping: function(worker_id, assignment_id, task_id, ping_type){
+		$.post(PING_ENDPOINT +
+			'worker/' + worker_id + '/task/' + task_id + '/event/' + ping_type, 
 			function(data, status){
 				console.log('pong', data)
-				setTimeout(Retainer.ping, PING_INTERVAL, worker_id, assignment_id, hit_id, Retainer.ping_type)
+				setTimeout(Retainer.ping, PING_INTERVAL, worker_id, assignment_id, task_id, Retainer.ping_type)
 			}
 		)
 	},
