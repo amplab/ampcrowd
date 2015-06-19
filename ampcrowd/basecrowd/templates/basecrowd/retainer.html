@@ -8,38 +8,82 @@ Note: Twitter Bootstrap CSS classes will be available for styling.
 
 -->
 
+<!-- Load the retainer library -->
 {% block jslibraries %}
     {{ block.super }}
     <script type='text/javascript' src='/static/basecrowd/js/retainer.js'></script>
 {% endblock jslibraries %}
 
-{% block customjs %}
-    {{ block.super }}
-{% endblock customjs %}
+<!-- Don't include javascript we don't need. -->
+{% block validate_func %}
+{% endblock validate_func %}
+
+{% block initialize_form_validation_func %}
+{% endblock initialize_form_validation_func %}
+
+<!-- Initialization -->
+{% block handle_is_accepted_func %}
+function handle_is_accepted()
+{
+    var is_accepted = {{ is_accepted|yesno:"true,false" }};
+    if (is_accepted)
+    {
+        // Set up retainer trackin
+        PING_ENDPOINT = "/crowds/{{ crowd_name }}/retainer/ping/";
+        WORK_ENDPOINT = "/crowds/{{ crowd_name }}/assignments/retainer/";
+        Retainer.init(PING_ENDPOINT, WORK_ENDPOINT);
+    }
+}
+{% endblock handle_is_accepted_func %}
 
 {% block ready_func %}
-{{ block.super }}
-
-// Initialize the retainer object
-PING_ENDPOINT = "/crowds/{{ crowd_name }}/retainer/ping/"
-WORK_ENDPOINT = "todo"
-PING_INTERVAL = 2500
-WORK_INTERVAL = 1000
 $(document).ready(function()
 {
-    var context = prepare_submit_data()
-    Retainer.init(context.workerId, context.assignmentId, context.HITId)
+    handle_is_accepted();
 });
 {% endblock ready_func %}
 
-{% block default_instruction %}
-<p> This will be a retainer task--we will show you various tasks inside this!</p>
-{% endblock %}
+<!-- Layout and Content -->
 
-{% block item_data %}
-<p>Hopefully unnecessary</p>
-{% endblock %}
 
-{% block item_labels %}
-<p>Hopefully really unnecessary</p>
-{% endblock %}
+<!-- Override standard layout -->
+{% block body %}
+
+<!-- Instruction panel -->
+<section class="container task-container">
+  <div class="row">
+    <div class="col-xs-12 col-md-12">
+      <div class="panel panel-primary">
+	<div class="panel-heading"><strong class="lead">Retainer Pool</strong></div>
+	<div class="panel-body">
+	  <p> This will be a retainer task--we will show you various tasks inside this!</p>
+	  <p> Talk about payment here?</p>
+	</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+
+    <!-- Looking for work -->
+    <div class="well col-xs-12 col-md-12" id="waitingDiv">
+      <h1>Waiting for next task...</h1>
+      <p><big><em>Please keep this page open until the task begins. To earn your pay for waiting, you must be available as soon as you are alerted. Depending on your browser you will be alerted in different ways, but keep an eye out for a pop-up or flashing tab in your browser. Since you will be able to see the alert from other tabs, you are free to take other tasks while you wait, <b>as long as you do NOT close this tab</b>, as that will remove you from the waiting area.</em></big></p>
+    </div>
+
+    <!-- Task iframe, hidden to start -->
+    <div class="col-xs-12 col-md-12">
+      <iframe src="about:blank" id="taskFrame" frameborder="0" style="display:none;width:100%;"></iframe>
+    </div>
+
+    <!-- Button to stop working -->
+    {% if is_accepted %}
+    <div class="col-xs-12 col-md-12">
+      <p class="text-center">
+	<button id="exitButton" class="btn btn-primary">Finish working</button>
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock body %}

@@ -1,3 +1,5 @@
+from django.core.urlresolvers import reverse
+from django.db.models import Count, F
 from django.template import RequestContext, TemplateDoesNotExist
 from django.template.loader import get_template, select_template
 from django.utils import timezone
@@ -6,10 +8,12 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.http import HttpResponse
 from datetime import datetime
+from base64 import b64encode
 import pytz
 import json
 import os
 import logging
+import uuid
 
 from basecrowd.interface import CrowdRegistry
 from basecrowd.models import TaskGroupRetainerStatus
@@ -115,6 +119,8 @@ def create_task_group(request, crowd_name):
         if retainer_pool.status in [RetainerPoolStatus.IDLE,
                                     RetainerPoolStatus.ACTIVE]:
             current_group.retainer_pool_status = TaskGroupRetainerStatus.RUNNING
+        else:
+            current_group.retainer_pool_status = TaskGroupRetainerStatus.WAITING
         current_group.save()
 
     else: # Not retainer, create a task for each batch of points.
@@ -169,6 +175,7 @@ def purge_tasks(request, crowd_name):
 def get_assignment(request, crowd_name):
     # get the interface implementation from the crowd name.
     interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
+    logger.info('Non-retainer worker requested task assignment.')
 
     # get assignment context
     context = interface.get_assignment_context(request)
@@ -182,6 +189,10 @@ def get_assignment(request, crowd_name):
         template = get_scoped_template(crowd_name, 'unavailable.html')
         return HttpResponse(template.render(RequestContext(request, {})))
 
+    return _get_assignment(request, crowd_name, interface, model_spec, context)
+
+
+def _get_assignment(request, crowd_name, interface, model_spec, context):
     # Retrieve the task based on task_id from the database
     try:
         current_task = model_spec.task_model.objects.get(
@@ -291,19 +302,109 @@ def post_response(request, crowd_name):
 
     return HttpResponse('ok')  # AJAX call succeded.
 
+
 # Views related to Retainer Pool tasks
 #######################################
 
+
 @require_POST
 @csrf_exempt
-def ping(request, crowd_name, worker_id, task_id, ping_type):
+def ping(request, crowd_name):
     interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
-    task = model_spec.task_model.objects.get(task_id=task_id)
-    worker = model_spec.worker_model.objects.get(worker_id=worker_id)
+
+    # get and validate context
+    context = interface.get_response_context(request)
+    interface.require_context(
+        context, ['task_id', 'worker_id'],
+        ValueError("ping context missing required keys."))
+    task = model_spec.task_model.objects.get(task_id=context['task_id'])
+    worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
 
     # TODO: track ping type?
+    # ping_type = request.POST['ping_type']
+
     # TODO: make this not broken when a worker is in multiple pools
     worker.last_ping = timezone.now()
     worker.save()
+    logger.info('ping from worker %s, task %s' % (worker, task))
 
     return HttpResponse('ok')
+
+
+@require_GET
+def assign_retainer_task(request, crowd_name):
+    # get the interface implementation from the crowd name.
+    interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
+
+    logger.info('Retainer task requested work.')
+    context = interface.get_response_context(request)
+    interface.require_context(
+        context, ['task_id', 'worker_id'],
+        ValueError("get_assignment context missing required keys."))
+    task = model_spec.task_model.objects.get(task_id=context['task_id'])
+    worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
+    pool = task.group.retainer_pool
+
+    # Look for a task the worker is already assigned to
+    assignment_task = None
+    existing_assignments = (worker.tasks
+                            .filter(group__retainer_pool=pool)
+                            .exclude(task_type='retainer'))
+    if existing_assignments.exists():
+        assignment_task = existing_assignments[0]
+    else:  # Look for open tasks
+        open_tasks = (
+
+            # incomplete tasks
+            model_spec.task_model.objects.filter(is_complete=False)
+
+            # in this pool's tasks
+            .filter(group__in=pool.task_groups.all())
+
+            # that aren't dummy retainer tasks
+            .exclude(task_type='retainer')
+
+            # that the worker hasn't worked on already
+            .exclude(responses__worker=worker)
+
+            # that haven't been assigned to enough workers yet
+            .annotate(num_workers=Count('workers'))
+            .filter(num_workers__lt=F('num_assignments')))
+
+        # Pick a random one and assign it to the worker
+        if open_tasks.exists():
+            assignment_task = open_tasks.order_by('?')[0]
+            worker.tasks.add(assignment_task)
+
+    # return a url to the assignment
+    if assignment_task:
+        url_args = {
+            'crowd_name': crowd_name,
+            'worker_id': worker.worker_id,
+            'task_id': assignment_task.task_id,
+        }
+        response_data = json.dumps({
+            'start': True,
+            'task_url': reverse('basecrowd:get_retainer_assignment',
+                                kwargs=url_args)
+        })
+        return HttpResponse(response_data)
+
+# we need this view to load in AMT's iframe, so disable Django's built-in
+# clickjacking protection.
+@xframe_options_exempt
+@require_GET
+def get_retainer_assignment(request, crowd_name, worker_id, task_id):
+    # get the interface implementation from the crowd name.
+    interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
+    logger.info('Retainer worker fetched task assignment.')
+
+    # construct assignment id
+    context = {
+        'task_id': task_id,
+        'worker_id': worker_id,
+        'is_accepted': True,
+        'assignment_id': uuid.uuid4()
+    }
+
+    return _get_assignment(request, crowd_name, interface, model_spec, context)

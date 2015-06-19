@@ -1,48 +1,59 @@
 // Adapted from https://github.com/uid/realtime-turk
 
+PING_INTERVAL = 2500;
+WORK_INTERVAL = 1000;
+PING_ENDPOINT = null;
+WORK_ENDPOINT = null;
+
 var Retainer = {
-	aid: null,
-	wid: null,
-	hid: null,
-	ping_type: 'waiting',
+    requestData: null,
 
-	init: function(worker_id, assignment_id, task_id){
-		Retainer.aid = assignment_id
-		Retainer.wid = worker_id
-		Retainer.tid = task_id
+    init: function(ping_url, work_url){
+	PING_ENDPOINT = ping_url;
+	WORK_ENDPOINT = work_url;
+	Retainer.requestData = prepare_submit_data();
+	Retainer.requestData.ping_type = 'waiting';
+	Retainer.ping(Retainer.requestData);
+	Retainer.checkForWork(Retainer.requestData);
+    },
 
-		Retainer.ping(worker_id, assignment_id, task_id, Retainer.ping_type)
-		Retainer.checkForWork(assignment_id)
-	},
+    ping: function(requestData){
+	$.post(PING_ENDPOINT,
+	       requestData,
+	       function(data, status){
+		   console.log('pong', data)
+		   setTimeout(Retainer.ping, PING_INTERVAL, requestData)
+	       }
+	      );
+    },
 
-	ping: function(worker_id, assignment_id, task_id, ping_type){
-		$.post(PING_ENDPOINT +
-			'worker/' + worker_id + '/task/' + task_id + '/event/' + ping_type, 
-			function(data, status){
-				console.log('pong', data)
-				setTimeout(Retainer.ping, PING_INTERVAL, worker_id, assignment_id, task_id, Retainer.ping_type)
-			}
-		)
-	},
+    checkForWork: function(requestData){
+	$.get(WORK_ENDPOINT,
+	      requestData,
+	      function(data, status){
+		  if(data.start === true){
+		      Retainer.requestData.ping_type = 'working';
+		      Retainer.hasWork(data);
+		  } else {
+		      setTimeout(Retainer.checkForWork, WORK_INTERVAL, requestData);
+		  }
+		  console.log(data);
+	      },
+	      'json'
+	     );
+    },
 
-	checkForWork: function(assignment_id){
-		$.ajax({
-			url: WORK_ENDPOINT + 'assignment/' + assignment_id,
-			success: function(data, status){
-				if(data.start === true){
-					Retainer.ping_type = 'working'
-					Retainer.hasWork(data)
-				} else {
-					setTimeout(Retainer.checkForWork, WORK_INTERVAL, assignment_id)
-				}
-				console.log(data)
-			},
-			dataType: 'json'
-		})
-	},
+    hasWork: function(data){
+	console.log('initialize task here');
+	alert('start now');
 
-	hasWork: function(data){
-		console.log('initialize task here')
-		alert('start now')
-	}
+	task_frame = $('#taskFrame');
+	task_frame.attr('src', data.task_url);
+	task_frame.load(function() {
+	    task_frame.show();
+	    task_frame.height(task_frame.contents().height());
+	    $('#waitingDiv').hide();
+	});
+
+    }
 }

@@ -165,6 +165,7 @@
     {% endblock misc_head_tags %}
 </head>
 
+{% block body %}
 <body>
 {% block form_tag %}
     <form method="post" id="submitForm" action="">
@@ -245,4 +246,5 @@
 {% block inline_js %}
 {% endblock inline_js %}
 </body>
+{% endblock body %}
 </html>
