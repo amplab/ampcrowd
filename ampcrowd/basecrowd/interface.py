@@ -91,14 +91,15 @@ class CrowdInterface(object):
         Additionally, the keys 'content', 'group_context', and 'response_url'
         are reserved.
         """
-        # Base implementation, look for the fields in the GET dictionary.
-        return {'task_id': request.GET.get('task_id', None),
-                'worker_id': request.GET.get('worker_id', None),
-                'is_accepted': request.GET.get('is_accepted', True)}
+        # Base implementation, look for the fields in the request dictionary.
+        request_data = request.GET if request.method == 'GET' else request.POST
+        return {'task_id': request_data.get('task_id', None),
+                'worker_id': request_data.get('worker_id', None),
+                'is_accepted': request_data.get('is_accepted', True)}
 
     @staticmethod
     def get_response_context(request):
-        """ Extract response data from a post request.
+        """ Extract response data from a request.
 
         `request` is a Django HttpRequest object created when the crowd
         interface posts data from an assignment. This method should return a
@@ -111,12 +112,13 @@ class CrowdInterface(object):
         * `answers`: the assignment responses in json form (task-type dependent)
 
         """
-        # Base implementation, look for the fields in the POST dictionary
+        # Base implementation, look for the fields in the request dictionary
+        request_data = request.GET if request.method == 'GET' else request.POST
         return {
-            'task_id': request.POST.get('task_id', None),
-            'worker_id': request.POST.get('worker_id', None),
-            'assignment_id': request.POST.get('assignment_id', None),
-            'answers': request.POST.get('answers', None)
+            'task_id': request_data.get('task_id', None),
+            'worker_id': request_data.get('worker_id', None),
+            'assignment_id': request_data.get('assignment_id', None),
+            'answers': request_data.get('answers', None)
         }
 
     @staticmethod

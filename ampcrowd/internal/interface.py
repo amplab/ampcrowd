@@ -16,8 +16,11 @@ class InternalCrowdInterface(CrowdInterface):
     @staticmethod
     def get_assignment_context(request):
         """ Get a random task of the specified type."""
-        worker_id = request.GET.get('worker_id')
-        task_type = request.GET.get('task_type')
+
+        # Extract data from the request
+        request_data = request.GET if request.method == 'GET' else request.POST
+        worker_id = request_data.get('worker_id')
+        task_type = request_data.get('task_type')
         eligible_tasks = (InternalCrowdInterface.get_eligible_tasks(worker_id)
                           .filter(task_type=task_type)
                           .order_by('create_time'))

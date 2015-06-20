@@ -40,15 +40,17 @@ class AMTCrowdInterface(CrowdInterface):
 
     @staticmethod
     def get_assignment_context(request):
+        request_data = request.GET if request.method == 'GET' else request.POST
+
         # parse information from AMT in the URL
         context = {
-            'task_id': request.GET.get('hitId'),
-            'worker_id': request.GET.get('workerId'),
-            'submit_url': request.GET.get('turkSubmitTo'),
+            'task_id': request_data.get('hitId'),
+            'worker_id': request_data.get('workerId'),
+            'submit_url': request_data.get('turkSubmitTo'),
         }
 
         # check for requests for a preview of the task
-        assignment_id = request.GET.get('assignmentId')
+        assignment_id = request_data.get('assignmentId')
         if assignment_id == AMT_NO_ASSIGNMENT_ID:
             assignment_id = None
             is_accepted = False
@@ -65,16 +67,6 @@ class AMTCrowdInterface(CrowdInterface):
                 recv_time=pytz.utc.localize(datetime.now()))
 
         return context
-
-    @staticmethod
-    def get_response_context(request):
-        # Extract data from the request
-        return {
-            'answers': request.POST.get('answers'),
-            'task_id': request.POST.get('HITId'),
-            'worker_id': request.POST.get('workerId'),
-            'assignment_id': request.POST.get('assignmentId')
-        }
 
     def get_frontend_submit_url(self, crowd_config):
         return (settings.POST_BACK_AMT_SANDBOX

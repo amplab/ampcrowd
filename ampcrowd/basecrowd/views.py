@@ -105,7 +105,7 @@ def create_task_group(request, crowd_name):
         for point_id, point_content in content.iteritems():
             task = model_spec.task_model(
                 task_type=configuration['task_type'],
-                data=json.dumps({point_id: content}),
+                data=json.dumps({point_id: point_content}),
                 create_time=pytz.utc.localize(datetime.now()),
                 task_id=point_id,
                 group=current_group,
@@ -192,7 +192,8 @@ def get_assignment(request, crowd_name):
     return _get_assignment(request, crowd_name, interface, model_spec, context)
 
 
-def _get_assignment(request, crowd_name, interface, model_spec, context):
+def _get_assignment(request, crowd_name, interface, model_spec, context,
+                    **custom_template_context):
     # Retrieve the task based on task_id from the database
     try:
         current_task = model_spec.task_model.objects.get(
@@ -235,6 +236,7 @@ def _get_assignment(request, crowd_name, interface, model_spec, context):
                    backend_submit_url=interface.get_backend_submit_url(),
                    frontend_submit_url=interface.get_frontend_submit_url(crowd_config),
                    crowd_name=crowd_name)
+    context.update(**custom_template_context)
 
     # Load the template and render it.
     template = get_scoped_template(crowd_name, current_task.task_type + '.html',
@@ -348,6 +350,7 @@ def assign_retainer_task(request, crowd_name):
     # Look for a task the worker is already assigned to
     assignment_task = None
     existing_assignments = (worker.tasks
+                            .filter(is_complete=False)
                             .filter(group__retainer_pool=pool)
                             .exclude(task_type='retainer'))
     if existing_assignments.exists():
@@ -371,6 +374,7 @@ def assign_retainer_task(request, crowd_name):
             .annotate(num_workers=Count('workers'))
             .filter(num_workers__lt=F('num_assignments')))
 
+
         # Pick a random one and assign it to the worker
         if open_tasks.exists():
             assignment_task = open_tasks.order_by('?')[0]
@@ -389,6 +393,8 @@ def assign_retainer_task(request, crowd_name):
                                 kwargs=url_args)
         })
         return HttpResponse(response_data)
+    else:
+        return HttpResponse(json.dumps({'start': False}))
 
 # we need this view to load in AMT's iframe, so disable Django's built-in
 # clickjacking protection.

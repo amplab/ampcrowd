@@ -28,6 +28,8 @@ var Retainer = {
     },
 
     checkForWork: function(requestData){
+	$('#waitingDiv').show();
+	$('#taskFrame').hide();
 	$.get(WORK_ENDPOINT,
 	      requestData,
 	      function(data, status){
@@ -47,12 +49,15 @@ var Retainer = {
 	console.log('initialize task here');
 	alert('start now');
 
-	task_frame = $('#taskFrame');
+	var task_frame = $('#taskFrame');
 	task_frame.attr('src', data.task_url);
 	task_frame.load(function() {
 	    task_frame.show();
 	    task_frame.height(task_frame.contents().height());
 	    $('#waitingDiv').hide();
+
+	    // sneakily override the submit behavior of the iframe
+	    task_frame[0].contentWindow.submit_to_frontend = Retainer.checkForWork;
 	});
 
     }
