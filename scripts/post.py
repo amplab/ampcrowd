@@ -119,7 +119,13 @@ def create_tasks(crowds, task_types, use_ssl, retainer):
         data['configuration']['task_batch_size'] = 2
         data['configuration']['num_assignments'] = num_assignments
         data['configuration']['callback_url'] = 'www.google.com'
-        data['configuration']['amt'] = {'sandbox' : True}
+        data['configuration']['amt'] = {
+            'sandbox' : True,
+            'title': 'This is a retainer HIT!',
+            'description': 'You will be on retainer',
+            'reward': 0.8,
+            'duration': 1000,
+        }
         add_retainer_config(data, retainer)
 
         data['group_id'] = 'er ' + str(uuid.uuid4())
@@ -143,7 +149,13 @@ def create_tasks(crowds, task_types, use_ssl, retainer):
         data['configuration']['task_batch_size'] = 2
         data['configuration']['num_assignments'] = num_assignments
         data['configuration']['callback_url'] = 'www.google.com'
-        data['configuration']['amt'] = {'sandbox' : True}
+        data['configuration']['amt'] = {
+            'sandbox' : True,
+            'title': 'This is a retainer HIT!',
+            'description': 'You will be on retainer',
+            'reward': 0.8,
+            'duration': 1000,
+        }
         add_retainer_config(data, retainer)
 
         data['group_id'] = 'ft ' + str(uuid.uuid4())
