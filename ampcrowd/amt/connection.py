@@ -84,7 +84,7 @@ def create_hit(hit_options):
             reward=Price(amount=options['reward']),
             duration=timedelta(minutes=options['duration']),
             max_assignments=options['num_responses'],
-            approval_delay=0)
+            approval_delay=3600)
     except MTurkRequestError:
         logger.debug(traceback.format_exc())
         raise AMTException(

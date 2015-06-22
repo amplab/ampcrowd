@@ -80,6 +80,12 @@ NUM_RETAINER_RECRUITMENT_TASKS = 7
 # How frequently to re-run the retainer task posting script.
 RETAINER_POST_TASKS_INTERVAL = 20 # seconds
 
+# How long until we decide that a worker has abandoned the pool.
+RETAINER_WORKER_TIMEOUT_SECONDS = 10
+
+# How frequently to re-run the worker retirement script.
+RETAINER_RETIRE_WORKERS_INTERVAL = 20 # seconds
+
 # Settings for AMQP /Celery
 ###########################
 
@@ -91,6 +97,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(seconds=RETAINER_POST_TASKS_INTERVAL),
         'args': (),
     },
+    'retire-workers': {
+        'task': 'basecrowd.tasks.retire_workers',
+        'schedule': timedelta(seconds=RETAINER_RETIRE_WORKERS_INTERVAL),
+        'args': (),
+    }
 }
 
 # Set broker using hosts entry for 'rabbitmq'. This is set for Docker but can be set to alias

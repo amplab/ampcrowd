@@ -28,10 +28,17 @@ function handle_is_accepted()
     var is_accepted = {{ is_accepted|yesno:"true,false" }};
     if (is_accepted)
     {
-        // Set up retainer trackin
+        // Set up retainer tracking
         PING_ENDPOINT = "/crowds/{{ crowd_name }}/retainer/ping/";
         WORK_ENDPOINT = "/crowds/{{ crowd_name }}/assignments/retainer/";
         Retainer.init(PING_ENDPOINT, WORK_ENDPOINT);
+
+        // Set up exit button
+        $("#exitButton").click(function(event) {
+            event.preventDefault();
+            var data = prepare_submit_data();
+            submit_to_frontend(data);
+        });
     }
 }
 {% endblock handle_is_accepted_func %}
@@ -79,9 +86,13 @@ $(document).ready(function()
     <!-- Button to stop working -->
     {% if is_accepted %}
     <div class="col-xs-12 col-md-12">
-      <p class="text-center">
-	<button id="exitButton" class="btn btn-primary">Finish working</button>
-      </p>
+      <form id="submitForm" action="">
+	<input type="hidden" value="{{ assignment_id }}" name="assignmentId" />
+	<input type="hidden" value="0" name="dummyData" />
+	<p class="text-center">
+	  <input type="submit" id="exitButton" class="btn btn-primary" value="Finish working" />
+	</p>
+      </form>
     </div>
     {% endif %}
   </div>

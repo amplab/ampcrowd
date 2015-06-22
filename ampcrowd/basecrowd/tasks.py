@@ -143,11 +143,12 @@ def post_retainer_tasks():
                     interface.delete_tasks([retainer_task.task,])
                     retainer_task.task.delete()
                     logger.info("Deleted old task %s" % retainer_task.task)
+
                 else:
                     logger.info("Not deleting %s, it has a worker."
                                 % retainer_task.task)
 
-                # delete the retainer task
+                # Mark the recruitment task inactive
                 retainer_task.active = False
                 retainer_task.save()
                 logger.info('Deleted old retainer task %s' % retainer_task)
@@ -155,3 +156,34 @@ def post_retainer_tasks():
             except Exception, e:
                 logger.warning('Could not remove task %s: %s' % (
                     retainer_task.task, str(e)))
+
+@celery.task
+def retire_workers():
+    logger = logging.getLogger(__name__)
+
+    # Process each installed crowd.
+    registry = CrowdRegistry.get_registry()
+    for crowd_name, (crowd_interface, crowd_model_spec) in registry.iteritems():
+
+        # Skip crowds that don't support retainer pools.
+        if not crowd_model_spec.retainer_pool_model:
+            logger.info("Crowd %s doesn't support retainer pools, not expiring "
+                        "workers" % crowd_name)
+            continue
+
+        # Find pools that need more workers.
+        logger.info("Crowd %s supports retainer pools, looking for workers to "
+                    "retire." % crowd_name)
+        for pool in crowd_model_spec.retainer_pool_model.objects.all():
+            for expired_task in pool.new_expired_tasks(crowd_model_spec.task_model):
+                logger.info("%s has expired. Cleaning up and paying the "
+                            "worker." % expired_task)
+
+                # mark the retainer task as expired
+                expired_task.is_retired = True
+                expired_task.save()
+
+                # TODO: pay the worker
+                assert expired_task.workers.count() == 1
+                worker = expired_task.workers.all()[0]
+                logger.info("Would pay worker %s here." % worker)

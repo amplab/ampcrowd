@@ -343,7 +343,10 @@ def ping(request, crowd_name):
     # ping_type = request.POST['ping_type']
 
     # TODO: make this not broken when a worker is in multiple pools
-    worker.last_ping = timezone.now()
+    now = timezone.now()
+    task.last_ping = now
+    task.save()
+    worker.last_ping = now
     worker.save()
     logger.info('ping from worker %s, task %s' % (worker, task))
 

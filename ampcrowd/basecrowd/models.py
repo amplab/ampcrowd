@@ -98,8 +98,17 @@ class AbstractCrowdTask(models.Model):
     # Is this task a retainer task?
     is_retainer = models.BooleanField(default=False)
 
+    # Has the task been retired?
+    is_retired = models.BooleanField(default=False)
+
+    # The last time someone working on this task pinged the server from a
+    # retainer pool
+    last_ping = models.DateTimeField(null=True)
+
     def __unicode__(self):
-        return self.task_type + " : " + self.data
+        task_str = "Task %s (type %s): %s" % (self.task_id, self.task_type,
+                                              self.data)
+        return task_str + " [retainer]" if self.is_retainer else task_str
 
     class Meta:
         abstract = True
@@ -121,7 +130,7 @@ class AbstractCrowdWorker(models.Model):
     last_ping = models.DateTimeField(null=True)
 
     def __unicode__(self):
-        return self.worker_id
+        return "Worker %s" % self.worker_id
 
     class Meta:
         abstract = True
@@ -149,7 +158,7 @@ class AbstractCrowdWorkerResponse(models.Model):
     assignment_id = models.CharField(max_length=200)
 
     def __unicode__(self):
-        return self.task.task_id + " " + self.worker.worker_id
+        return "Response: %s to %s" % (self.worker, self.task)
 
     class Meta:
         abstract = True
@@ -207,7 +216,19 @@ class AbstractRetainerPool(models.Model):
     def active_workers(self):
         time_cutoff = timezone.now() - timedelta(
             seconds=settings.PING_TIMEOUT_SECONDS)
-        return self.workers.filter(last_ping__gte=time_cutoff)
+        return self.workers.filter(tasks__task_type='retainer',
+                                   tasks__group__retainer_pool=self,
+                                   tasks__last_ping__gte=time_cutoff)
+
+    def expired_tasks(self, task_model):
+        time_cutoff = timezone.now() - timedelta(
+            seconds=settings.RETAINER_WORKER_TIMEOUT_SECONDS)
+        return task_model.objects.filter(task_type='retainer',
+                                  group__retainer_pool=self,
+                                  last_ping__lt=time_cutoff)
+    def new_expired_tasks(self, task_model):
+        # expired workers with a retainer task that hasn't been marked retired.
+        return self.expired_tasks(task_model).filter(is_retired=False)
 
     class Meta:
         abstract = True
