@@ -21,10 +21,11 @@ var Retainer = {
 	$.post(PING_ENDPOINT,
 	       requestData,
 	       function(data, status){
-		   console.log('pong', data)
-		   setTimeout(Retainer.ping, PING_INTERVAL, requestData)
-	       }
-	      );
+		   console.log('pong', data);
+	       })
+	.always(function(){
+	   setTimeout(Retainer.ping, PING_INTERVAL, requestData);
+	});
     },
 
     checkForWork: function(requestData){
@@ -36,13 +37,16 @@ var Retainer = {
 		  if(data.start === true){
 		      Retainer.requestData.ping_type = 'working';
 		      Retainer.hasWork(data);
-		  } else {
-		      setTimeout(Retainer.checkForWork, WORK_INTERVAL, requestData);
 		  }
 		  console.log(data);
 	      },
 	      'json'
-	     );
+	     )
+	.always(function(){
+	    if (Retainer.requestData.ping_type == 'waiting') {
+		setTimeout(Retainer.checkForWork, WORK_INTERVAL, requestData);
+	    }
+	});
     },
 
     hasWork: function(data){
@@ -57,7 +61,10 @@ var Retainer = {
 	    $('#waitingDiv').hide();
 
 	    // sneakily override the submit behavior of the iframe
-	    task_frame[0].contentWindow.submit_to_frontend = Retainer.checkForWork;
+	    task_frame[0].contentWindow.submit_to_frontend = function() {
+		Retainer.requestData.ping_type = 'waiting';
+		Retainer.checkForWork(Retainer.requestData);
+	    }
 	});
 
     }
