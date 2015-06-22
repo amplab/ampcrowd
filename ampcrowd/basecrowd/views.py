@@ -217,15 +217,32 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
     else:
         current_worker = None
 
+    is_accepted = context.get('is_accepted', False)
+
+    # If this is a retainer task, add the worker to the pool (if the worker
+    # isn't already in the pool, i.e., they're trying to accept multiple HITs
+    # for the same pool).
+    if current_task.task_type == 'retainer':
+
+        # TODO: consider making this all pools (i.e., a worker can't be in
+        # more than one pool at a time).
+        logger.info("IS ACCEPTED:" + str(is_accepted))
+        logger.info("CURRENT WORKER: %s" % current_worker)
+        logger.info("URL: %s" % request.get_full_path())
+        if (current_worker in current_task.group.retainer_pool.active_workers
+            and current_task not in current_worker.tasks.all()):
+            raise ValueError("Can't join pool twice!")
+            # TODO: Make this an html page for the user
+
+        if is_accepted:
+            current_worker.pools.add(current_task.group.retainer_pool)
+
     # Relate workers and tasks (after a worker accepts the task).
-    if context.get('is_accepted', False):
+    if is_accepted:
         if not current_worker:
             raise ValueError("Accepted tasks must have an associated worker.")
         if not current_worker.tasks.filter(task_id=current_task.task_id).exists():
             current_worker.tasks.add(current_task)
-
-        if current_task.task_type == 'retainer':
-            current_worker.pools.add(current_task.group.retainer_pool)
 
     # Add task data to the context.
     content = json.loads(current_task.data)
@@ -342,7 +359,7 @@ def assign_retainer_task(request, crowd_name):
     context = interface.get_response_context(request)
     interface.require_context(
         context, ['task_id', 'worker_id'],
-        ValueError("get_assignment context missing required keys."))
+        ValueError("retainer assignment context missing required keys."))
     task = model_spec.task_model.objects.get(task_id=context['task_id'])
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
     pool = task.group.retainer_pool
