@@ -236,6 +236,10 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
 
         if is_accepted:
             current_worker.pools.add(current_task.group.retainer_pool)
+            current_task.assigned_at = timezone.now()
+            current_task.save()
+            context.update(wait_time_total=current_task.time_waited_total,
+                           wait_time_session=current_task.time_waited_session)
 
     # Relate workers and tasks (after a worker accepts the task).
     if is_accepted:
@@ -330,6 +334,7 @@ def post_response(request, crowd_name):
 @csrf_exempt
 def ping(request, crowd_name):
     interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
+    now = timezone.now()
 
     # get and validate context
     context = interface.get_response_context(request)
@@ -339,18 +344,38 @@ def ping(request, crowd_name):
     task = model_spec.task_model.objects.get(task_id=context['task_id'])
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
 
-    # TODO: track ping type?
-    # ping_type = request.POST['ping_type']
+    # update waiting time
+    ping_type = request.POST['ping_type']
+    last_ping_type = task.last_ping_type or 'waiting'
+    last_ping = task.last_ping or task.assigned_at
+    time_since_last_ping = (now - last_ping).total_seconds()
 
-    # TODO: make this not broken when a worker is in multiple pools
-    now = timezone.now()
+    # Task is waiting, increment wait time.
+    if ping_type == 'waiting':
+        task.time_waited_session += time_since_last_ping
+
+    # Task is done waiting, end the session.
+    elif ping_type == 'working' and last_ping_type == 'waiting':
+        task.time_waited_total += task.time_waited_session + time_since_last_ping
+        task.time_waited_session = 0
+
+    # Task is continuing to work, do nothing.
+    elif ping_type == 'working' and task.last_ping_type == 'working':
+        pass
+
     task.last_ping = now
+    task.last_ping_type = ping_type
     task.save()
     worker.last_ping = now
     worker.save()
     logger.info('ping from worker %s, task %s' % (worker, task))
 
-    return HttpResponse('ok')
+    data = {
+        'ping_type': ping_type,
+        'wait_time_session': task.time_waited_session,
+        'wait_time_total': task.time_waited_total,
+    }
+    return HttpResponse(json.dumps(data), content_type='application/json')
 
 
 @require_GET
@@ -412,9 +437,10 @@ def assign_retainer_task(request, crowd_name):
             'task_url': reverse('basecrowd:get_retainer_assignment',
                                 kwargs=url_args)
         })
-        return HttpResponse(response_data)
+        return HttpResponse(response_data, content_type='application/json')
     else:
-        return HttpResponse(json.dumps({'start': False}))
+        return HttpResponse(json.dumps({'start': False}),
+                            content_type='application/json')
 
 # we need this view to load in AMT's iframe, so disable Django's built-in
 # clickjacking protection.

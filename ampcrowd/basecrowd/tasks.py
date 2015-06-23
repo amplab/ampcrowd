@@ -179,11 +179,56 @@ def retire_workers():
                 logger.info("%s has expired. Cleaning up and paying the "
                             "worker." % expired_task)
 
-                # mark the retainer task as expired
-                expired_task.is_retired = True
-                expired_task.save()
-
-                # TODO: pay the worker
-                assert expired_task.workers.count() == 1
+                # mark the retainer task as expire
                 worker = expired_task.workers.all()[0]
-                logger.info("Would pay worker %s here." % worker)
+                expired_task.is_retired = True
+
+                # Tally the work done by the worker
+                assert expired_task.workers.count() == 1
+                expired_task.time_waited_total += expired_task.time_waited_session
+                expired_task.time_waited_session = 0
+                expired_task.save()
+                wait_time = expired_task.time_waited_total
+
+                logger.info("%s waited %f seconds on this task."
+                            % (worker, wait_time))
+
+                # Find the tasks the worker has completed during this session in
+                # the pool. Avoid double-counting tasks between sessions
+                try:
+                    next_session_start = expired_task.get_next_by_assigned_at(
+                        workers=worker, task_type='retainer')
+                except crowd_model_spec.task_model.DoesNotExist:
+                    next_session_start = timezone.make_aware(datetime.max, None)
+                completed_tasks = (
+                    worker.tasks
+                    .exclude(task_type='retainer')
+                    .filter(group__retainer_pool=pool)
+
+                    # Only tasks that this worker gave answers for within the
+                    # time of the current session.
+                    .filter(responses__worker=worker,
+                            responses__created_at__gte=expired_task.assigned_at,
+                            responses__created_at__lte=next_session_start))
+                num_completed_tasks = completed_tasks.count()
+                logger.info("%s completed %d tasks." % (worker,
+                                                        num_completed_tasks))
+
+                # Make sure the worker has completed the required number of tasks
+                if num_completed_tasks < 0: # TODO: pass this around config
+                    # TODO: reject work
+                    pass
+
+                # Pay the worker
+                else:
+                    waiting_rate = 0 # TODO: load this
+                    per_task_rate = 0 # TODO: load this
+                    list_rate = 0 # TODO: load this
+                    total_owed = (waiting_rate * wait_time
+                                  + per_task_rate * num_completed_tasks)
+                    bonus_amount = total_owed - list_rate
+                    # TODO: make the bonus payment
+                    logging.info("Paying %f x %f + %f x %d - %f = %f dollars "
+                                 "to %s" % (waiting_rate, wait_time,
+                                            per_task_rate, num_completed_tasks,
+                                            list_rate, bonus_amount, worker))

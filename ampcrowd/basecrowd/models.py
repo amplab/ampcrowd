@@ -98,12 +98,28 @@ class AbstractCrowdTask(models.Model):
     # Is this task a retainer task?
     is_retainer = models.BooleanField(default=False)
 
+
+    # Fields for special 'proto' retainer tasks (task_type = 'retainer')
+    ####################################################################
+
     # Has the task been retired?
     is_retired = models.BooleanField(default=False)
 
     # The last time someone working on this task pinged the server from a
     # retainer pool
     last_ping = models.DateTimeField(null=True)
+
+    # The type of the last ping
+    last_ping_type = models.CharField(max_length=64)
+
+    # Assignment time
+    assigned_at = models.DateTimeField(default=datetime.now())
+
+    # Cumulative waiting time, in seconds
+    time_waited_total = models.FloatField(default=0)
+
+    # Waiting time this session, in seconds
+    time_waited_session = models.FloatField(default=0)
 
     def __unicode__(self):
         task_str = "Task %s (type %s): %s" % (self.task_id, self.task_type,
@@ -156,6 +172,9 @@ class AbstractCrowdWorkerResponse(models.Model):
 
     # The assignment id of this response
     assignment_id = models.CharField(max_length=200)
+
+    # The time of the response
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __unicode__(self):
         return "Response: %s to %s" % (self.worker, self.task)
