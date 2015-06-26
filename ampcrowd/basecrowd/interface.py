@@ -63,10 +63,37 @@ class CrowdInterface(object):
         pass
 
     @staticmethod
+    def pay_worker_bonus(worker_object, task_object, bonus_amount, reason):
+        """ Pay an additional bonus to a worker.
+
+        `worker_object` is an instance of this crowd's worker model,
+        `task_object` is an instance of this crowd's task model, `bonus_amount`
+        is a float containing the amount of money to pay the worker in USD, and
+        `reason` is a string explaining why the bonus has been granted. This
+        method should attempt to pay the appropriate amount to the worker on the
+        remote platform, or do nothing if bonus payments aren't supported.
+        """
+        # Dummy implementation, do nothing
+        pass
+
+    @staticmethod
+    def reject_task(task_object, worker_object, reason):
+        """ Reject work done by a worker instead of paying them.
+
+        `task_object` is an instance of this crowd's task model, `worker_object`
+        is an instance of this crowd's worker model, and `reason` is a string
+        explaining why the work has been rejected. This method should reject the
+        assignment of this worker to this task on the remote crowd platform, or
+        do nothing if task rejection isn't supported.
+        """
+        # Dummy implementation, do nothing
+        pass
+
+    @staticmethod
     def delete_tasks(task_objects):
         """ Delete multiple tasks on the crowd platform.
 
-        `task_objects` is a queryset containing multiple instances of the this
+        `task_objects` is a queryset containing multiple instances of this
         crowd's task_model. This method should not delete the objects
         themselves, just handle the remote cleanup.
         """
@@ -207,7 +234,11 @@ class CrowdInterface(object):
                 if retainer_config.get('create_pool', True):
                     self.require_context(
                         retainer_config,
-                        ['pool_size'],
+                        ['pool_size',
+                         'min_tasks_per_worker',
+                         'waiting_rate',
+                         'task_rate',
+                         'list_rate'],
                         ValueError())
                 else:
                     self.require_context(

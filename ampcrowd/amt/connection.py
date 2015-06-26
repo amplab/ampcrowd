@@ -108,3 +108,36 @@ def disable_hit(task):
         raise AMTException(
             "Couldn't delete HIT " + task.task_id + ": " + str(e)
         )
+
+def reject_assignment(task, worker, reason):
+    crowd_config = json.loads(task.group.crowd_config)
+    conn = get_amt_connection(crowd_config['sandbox'])
+    try:
+        worker_assignments = [a for a in conn.get_assignments(task.task_id)
+                              if a.WorkerId == worker.worker_id]
+        assert len(worker_assignments) == 1
+        conn.reject_assignment(worker_assignments[0].AssignmentId, reason)
+    except MTurkRequestError as e:
+        logging.debug(traceback.format_exc())
+        raise AMTException("Couldn't reject HIT %s, worker %s: %s" % (
+            task.task_id, worker.worker_id, str(e)))
+    except AssertionError as e:
+        raise AMTException("More than one assignment for retainer task %s"
+                           % task.task_id)
+
+def bonus_worker(worker, task, amount, reason):
+    crowd_config = json.loads(task.group.crowd_config)
+    conn = get_amt_connection(crowd_config['sandbox'])
+    try:
+        worker_assignments = [a for a in conn.get_assignments(task.task_id)
+                              if a.WorkerId == worker.worker_id]
+        assert len(worker_assignments) == 1
+        conn.grant_bonus(worker.worker_id, worker_assignments[0].AssignmentId,
+                         Price(amount=amount), reason)
+    except MTurkRequestError as e:
+        logging.debug(traceback.format_exc())
+        raise AMTException("Couldn't grant bonus to worker %s for HIT %s: %s" %
+                           (worker.worker_id, task.task_id, str(e)))
+    except AssertionError as e:
+        raise AMTException("More than one assignment for retainer task %s"
+                           % task.task_id)

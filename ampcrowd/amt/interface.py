@@ -5,7 +5,8 @@ from datetime import datetime
 from django.conf import settings
 
 from basecrowd.interface import CrowdInterface
-from connection import create_hit, disable_hit, AMT_NO_ASSIGNMENT_ID
+from connection import create_hit, disable_hit, reject_assignment, bonus_worker
+from connection import AMT_NO_ASSIGNMENT_ID
 from models import Request
 
 
@@ -31,6 +32,14 @@ class AMTCrowdInterface(CrowdInterface):
         additional_options = {'num_responses': configuration['num_assignments']}
         additional_options.update(configuration['amt'])
         return create_hit(additional_options)
+
+    @staticmethod
+    def pay_worker_bonus(worker_object, task_object, bonus_amount, reason):
+        bonus_worker(worker_object, task_object, bonus_amount, reason)
+
+    @staticmethod
+    def reject_task(task_object, worker_object, reason):
+        reject_assignment(task_object, worker_object, reason)
 
     @staticmethod
     def delete_tasks(task_objects):
