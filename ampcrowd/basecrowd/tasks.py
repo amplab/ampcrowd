@@ -215,20 +215,33 @@ def retire_workers():
                                                         num_completed_tasks))
 
                 # Make sure the worker has completed the required number of tasks
-                if num_completed_tasks < 0: # TODO: pass this around config
-                    # TODO: reject work
-                    pass
+                group_config = json.loads(expired_task.group.global_config)
+                retain_config = group_config['retainer_pool']
+                if num_completed_tasks < retain_config['min_tasks_per_worker']:
+                    logger.info("%s didn't complete enough tasks in the pool, "
+                                "rejecting work." % worker)
+                    crowd_interface.reject_task(
+                        expired_task, worker, "You must completed at least %d "
+                        "tasks to be approved for this assignment, as stated "
+                        "in the HIT instructions." %
+                        retain_config['min_tasks_per_worker'])
+                    expired_task.rejected_at = timezone.now()
 
                 # Pay the worker
                 else:
-                    waiting_rate = 0 # TODO: load this
-                    per_task_rate = 0 # TODO: load this
-                    list_rate = 0 # TODO: load this
+                    waiting_rate = retain_config['waiting_rate']
+                    per_task_rate = retain_config['task_rate']
+                    list_rate = retain_config['list_rate']
                     total_owed = (waiting_rate * wait_time
                                   + per_task_rate * num_completed_tasks)
-                    bonus_amount = total_owed - list_rate
-                    # TODO: make the bonus payment
+                    bonus_amount = round(total_owed - list_rate, 2)
+
                     logging.info("Paying %f x %f + %f x %d - %f = %f dollars "
                                  "to %s" % (waiting_rate, wait_time,
                                             per_task_rate, num_completed_tasks,
                                             list_rate, bonus_amount, worker))
+                    crowd_interface.pay_worker_bonus(
+                        worker, expired_task, bonus_amount,
+                        "You completed %d tasks and waited %f minutes on a "
+                        "retainer pool task. Thank you!" %
+                        (num_completed_tasks, wait_time))

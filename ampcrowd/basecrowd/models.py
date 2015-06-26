@@ -49,6 +49,9 @@ class AbstractCrowdTaskGroup(models.Model):
     # The configuration specific to current crowd type
     crowd_config = models.TextField()
 
+    # All of the configuration passed in when this task was created
+    global_config = models.TextField()
+
     # When the group was created
     created_at = models.DateTimeField(default=timezone.now)
 
@@ -114,6 +117,9 @@ class AbstractCrowdTask(models.Model):
 
     # Assignment time
     assigned_at = models.DateTimeField(default=datetime.now())
+
+    # Rejection time, if the task was rejected
+    rejected_at = models.DateTimeField(null=True)
 
     # Cumulative waiting time, in seconds
     time_waited_total = models.FloatField(default=0)

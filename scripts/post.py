@@ -63,6 +63,10 @@ def add_retainer_config(req_data, retainer):
             'create_pool': True,
             'pool_id': str(uuid.uuid4()),
             'pool_size': 1,
+            'min_tasks_per_worker': 2,
+            'waiting_rate': .02,
+            'task_rate': .02,
+            'list_rate': .04,
         }
     return req_data
 

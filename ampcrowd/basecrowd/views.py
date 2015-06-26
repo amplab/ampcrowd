@@ -59,7 +59,8 @@ def create_task_group(request, crowd_name):
         tasks_finished=0,
         callback_url=configuration['callback_url'],
         group_context=group_context,
-        crowd_config=json.dumps(configuration.get(crowd_name, {})))
+        crowd_config=json.dumps(configuration.get(crowd_name, {})),
+        global_config=json.dumps(configuration))
 
     # Call the group hook function, then save the new group to the database.
     interface.group_pre_save(current_group)
