@@ -188,9 +188,9 @@ def retire_workers():
                 expired_task.time_waited_total += expired_task.time_waited_session
                 expired_task.time_waited_session = 0
                 expired_task.save()
-                wait_time = expired_task.time_waited_total
+                wait_time = expired_task.time_waited_total / 60.0
 
-                logger.info("%s waited %f seconds on this task."
+                logger.info("%s waited %f minutes on this task."
                             % (worker, wait_time))
 
                 # Find the tasks the worker has completed during this session in
