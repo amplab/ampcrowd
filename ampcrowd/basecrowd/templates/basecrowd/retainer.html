@@ -56,17 +56,38 @@ $(document).ready(function()
 <!-- Override standard layout -->
 {% block body %}
 
+<!-- TODO: popover w/ instructions
+{% if not is_understood %}
+<div class=popover...></div>
+{% endif %}
+-->
+
 <!-- Instruction panel -->
 <section class="container task-container">
   <div class="row">
-    <div class="col-xs-12 col-md-12">
-      <div class="panel panel-primary">
-	<div class="panel-heading"><strong class="lead">Retainer Pool</strong></div>
-	<div class="panel-body">
-	  <p> This will be a retainer task--we will show you various tasks inside this!</p>
-	  <p> Talk about payment here?</p>
-	</div>
-      </div>
+    <div class="col-xs-2 col-md-2">
+      <p class="text-center"><big><em>Retainer Pool.</big></em></p>
+    </div>
+    <div class="col-xs-8 col-md-8">
+      <p class="text-center">
+	<big><em>Wait Time: <span id="waitTime">{{ wait_time }}</span> seconds.
+	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed }}</span>.</em></big>
+      </p>
+    </div>
+
+    <!-- Button to stop working -->
+    {% if is_accepted %}
+    <div class="col-xs-2 col-md-2">
+      <form id="submitForm" action="">
+	<input type="hidden" value="{{ assignment_id }}" name="assignmentId" />
+	<input type="hidden" value="0" name="dummyData" />
+	<p>
+	  <input type="submit" id="exitButton" class="btn btn-default btn-sm" value="Finish working" />
+	</p>
+      </form>
+    </div>
+    {% endif %}
+
     </div>
   </div>
 
@@ -75,7 +96,6 @@ $(document).ready(function()
     <!-- Looking for work -->
     <div class="well col-xs-12 col-md-12" id="waitingDiv">
       <h1>Waiting for next task...</h1>
-      <p><big><em>Wait Time: <span id="sessionWaitTime"></span> seconds (session), <span id="totalWaitTime"></span> seconds (total).</em></big></p>
       <p><big><em>Please keep this page open until the task begins. To earn your pay for waiting, you must be available as soon as you are alerted. Depending on your browser you will be alerted in different ways, but keep an eye out for a pop-up or flashing tab in your browser. Since you will be able to see the alert from other tabs, you are free to take other tasks while you wait, <b>as long as you do NOT close this tab</b>, as that will remove you from the waiting area.</em></big></p>
     </div>
 
@@ -84,18 +104,6 @@ $(document).ready(function()
       <iframe src="about:blank" id="taskFrame" frameborder="0" style="display:none;width:100%;"></iframe>
     </div>
 
-    <!-- Button to stop working -->
-    {% if is_accepted %}
-    <div class="col-xs-12 col-md-12">
-      <form id="submitForm" action="">
-	<input type="hidden" value="{{ assignment_id }}" name="assignmentId" />
-	<input type="hidden" value="0" name="dummyData" />
-	<p class="text-center">
-	  <input type="submit" id="exitButton" class="btn btn-primary" value="Finish working" />
-	</p>
-      </form>
-    </div>
-    {% endif %}
   </div>
 </section>
 {% endblock body %}

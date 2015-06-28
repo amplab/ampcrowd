@@ -239,8 +239,10 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
             current_worker.pools.add(current_task.group.retainer_pool)
             current_task.assigned_at = timezone.now()
             current_task.save()
-            context.update(wait_time_total=current_task.time_waited_total,
-                           wait_time_session=current_task.time_waited_session)
+            context.update({
+                'wait_time': current_task.time_waited,
+                'tasks_completed': current_worker.completed_tasks_for_pool_session(
+                    current_task.group.retainer_pool, current_task).count()})
 
     # Relate workers and tasks (after a worker accepts the task).
     if is_accepted:
@@ -373,8 +375,9 @@ def ping(request, crowd_name):
 
     data = {
         'ping_type': ping_type,
-        'wait_time_session': task.time_waited_session,
-        'wait_time_total': task.time_waited_total,
+        'wait_time': task.time_waited,
+        'tasks_completed': worker.completed_tasks_for_pool_session(
+            task.group.retainer_pool, task).count()
     }
     return HttpResponse(json.dumps(data), content_type='application/json')
 

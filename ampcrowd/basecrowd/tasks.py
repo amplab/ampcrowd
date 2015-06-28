@@ -193,23 +193,9 @@ def retire_workers():
                 logger.info("%s waited %f minutes on this task."
                             % (worker, wait_time))
 
-                # Find the tasks the worker has completed during this session in
-                # the pool. Avoid double-counting tasks between sessions
-                try:
-                    next_session_start = expired_task.get_next_by_assigned_at(
-                        workers=worker, task_type='retainer')
-                except crowd_model_spec.task_model.DoesNotExist:
-                    next_session_start = timezone.make_aware(datetime.max, None)
-                completed_tasks = (
-                    worker.tasks
-                    .exclude(task_type='retainer')
-                    .filter(group__retainer_pool=pool)
-
-                    # Only tasks that this worker gave answers for within the
-                    # time of the current session.
-                    .filter(responses__worker=worker,
-                            responses__created_at__gte=expired_task.assigned_at,
-                            responses__created_at__lte=next_session_start))
+                # Count tasks the worker has completed during this session.
+                completed_tasks = worker.completed_tasks_for_pool_session(
+                    pool, expired_task)
                 num_completed_tasks = completed_tasks.count()
                 logger.info("%s completed %d tasks." % (worker,
                                                         num_completed_tasks))

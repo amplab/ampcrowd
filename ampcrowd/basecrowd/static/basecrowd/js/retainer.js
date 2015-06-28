@@ -22,8 +22,8 @@ var Retainer = {
 	       requestData,
 	       function(data, status){
 		   console.log('pong', data);
-		   $('#totalWaitTime').text(data.wait_time_total)
-		   $('#sessionWaitTime').text(data.wait_time_session)
+		   $('#waitTime').text(data.wait_time)
+		   $('#tasksCompleted').text(data.tasks_completed)
 	       })
 	.always(function(){
 	   setTimeout(Retainer.ping, PING_INTERVAL, requestData);

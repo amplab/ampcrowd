@@ -127,6 +127,11 @@ class AbstractCrowdTask(models.Model):
     # Waiting time this session, in seconds
     time_waited_session = models.FloatField(default=0)
 
+    # Convenience method for accessing total time waited.
+    @property
+    def time_waited(self):
+        return round(self.time_waited_total + self.time_waited_session, 2)
+
     def __unicode__(self):
         task_str = "Task %s (type %s): %s" % (self.task_id, self.task_type,
                                               self.data)
@@ -150,6 +155,26 @@ class AbstractCrowdWorker(models.Model):
 
     # The last time this worker pinged the server from a retainer pool
     last_ping = models.DateTimeField(null=True)
+
+    # Find the tasks the worker has completed during this session in
+    # the pool. Avoid double-counting tasks between sessions.
+    def completed_tasks_for_pool_session(self, pool, session_task):
+        try:
+            next_session_start = session_task.get_next_by_assigned_at(
+                workers=self, task_type='retainer')
+        except session_task.__class__.DoesNotExist:
+            next_session_start = timezone.make_aware(datetime.max, None)
+        completed_tasks = (
+            self.tasks
+            .exclude(task_type='retainer')
+            .filter(group__retainer_pool=pool)
+
+            # Only tasks that this worker gave answers for within the
+            # time of the current session.
+            .filter(responses__worker=self,
+                    responses__created_at__gte=session_task.assigned_at,
+                    responses__created_at__lte=next_session_start))
+        return completed_tasks
 
     def __unicode__(self):
         return "Worker %s" % self.worker_id
