@@ -406,29 +406,51 @@ def assign_retainer_task(request, crowd_name):
     if existing_assignments.exists():
         assignment_task = existing_assignments[0]
     else:  # Look for open tasks
-        open_tasks = (
+        incomplete_tasks = (
 
             # incomplete tasks
             model_spec.task_model.objects.filter(is_complete=False)
 
             # in this pool's tasks
-            .filter(group__in=pool.task_groups.all())
+            .filter(group__retainer_pool=pool)
 
             # that aren't dummy retainer tasks
             .exclude(task_type='retainer')
 
             # that the worker hasn't worked on already
-            .exclude(responses__worker=worker)
+            .exclude(responses__worker=worker))
+
+        # First check if the open tasks haven't been assigned to enough workers.
+        open_tasks = (
+            incomplete_tasks
 
             # that haven't been assigned to enough workers yet
             .annotate(num_workers=Count('workers'))
             .filter(num_workers__lt=F('num_assignments')))
-
-
-        # Pick a random one and assign it to the worker
         if open_tasks.exists():
             assignment_task = open_tasks.order_by('?')[0]
             worker.tasks.add(assignment_task)
+
+        # Then, check if there in-progress tasks with enough assignments.
+        elif incomplete_tasks.exists():
+            # TODO: make configurable with the task group.
+            straggler_mitigation = False
+
+            if not straggler_mitigation: # only assign tasks that have been abandoned
+                # Bad performance characteristics! consider rewriting.
+                active_workers = set(pool.active_workers.all())
+                abandoned_tasks = [
+                    t for t in incomplete_tasks
+                    if not set(t.workers.all()) <= active_workers]
+
+                if abandoned_tasks:
+                    assignment_task = random.choice(abandoned_tasks)
+                    worker.tasks.add(assignment_task)
+
+            # Straggler mitigation
+            else:
+                assignment_task = incomplete_tasks.order_by('?')[0]
+                worker.tasks.add(assignment_task)
 
     # return a url to the assignment
     if assignment_task:
