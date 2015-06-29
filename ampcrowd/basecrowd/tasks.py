@@ -171,7 +171,7 @@ def retire_workers():
                         "workers" % crowd_name)
             continue
 
-        # Find pools that need more workers.
+        # Find pools with expired workers.
         logger.info("Crowd %s supports retainer pools, looking for workers to "
                     "retire." % crowd_name)
         for pool in crowd_model_spec.retainer_pool_model.objects.all():

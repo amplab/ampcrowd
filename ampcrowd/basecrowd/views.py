@@ -464,3 +464,18 @@ def get_retainer_assignment(request, crowd_name, worker_id, task_id):
     }
 
     return _get_assignment(request, crowd_name, interface, model_spec, context)
+
+@require_POST
+@csrf_exempt
+def finish_pool(request, crowd_name):
+    pool_id = request.POST.get('pool_id')
+    interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
+    try:
+        pool = model_spec.retainer_pool_model.objects.get(external_id=pool_id)
+    except model_spec.retainer_pool_model.DoesNotExist:
+        return HttpResponse(json.dumps({'error': 'Invalid pool id'}))
+
+    pool.status = RetainerPoolStatus.FINISHED
+    pool.save()
+    logger.info("Retainer pool %s finished" % pool)
+    return HttpResponse(json.dumps({'status': 'ok'}))

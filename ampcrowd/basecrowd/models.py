@@ -220,6 +220,7 @@ class RetainerPoolStatus:
     RECRUITING = 2 # Pool is recruiting workers to capacity
     IDLE = 3 # Pool is at worker capacity, and is ready to run tasks
     ACTIVE = 4 # Pool is running task groups
+    FINISHED = 5 # Pool has been terminated
 
 
 # Model for a pool of workers
@@ -237,6 +238,7 @@ class AbstractRetainerPool(models.Model):
         (RetainerPoolStatus.RECRUITING, 'recruiting'),
         (RetainerPoolStatus.IDLE, 'idle'),
         (RetainerPoolStatus.ACTIVE, 'active'),
+        (RetainerPoolStatus.FINISHED, 'finished'),
     )
     status = models.IntegerField(choices=STATUSES,
                                  default=RetainerPoolStatus.CREATED)
