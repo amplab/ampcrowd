@@ -207,7 +207,7 @@ def retire_workers():
                     logger.info("%s didn't complete enough tasks in the pool, "
                                 "rejecting work." % worker)
                     crowd_interface.reject_task(
-                        expired_task, worker, "You must completed at least %d "
+                        expired_task, worker, "You must complete at least %d "
                         "tasks to be approved for this assignment, as stated "
                         "in the HIT instructions." %
                         retain_config['min_tasks_per_worker'])

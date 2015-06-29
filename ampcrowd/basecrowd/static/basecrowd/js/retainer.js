@@ -12,7 +12,7 @@ var Retainer = {
 	PING_ENDPOINT = ping_url;
 	WORK_ENDPOINT = work_url;
 	Retainer.requestData = prepare_submit_data();
-	Retainer.requestData.ping_type = 'waiting';
+	Retainer.requestData.ping_type = 'starting';
 	Retainer.ping(Retainer.requestData);
 	Retainer.checkForWork(Retainer.requestData);
 	Retainer.finished = false;
@@ -30,7 +30,10 @@ var Retainer = {
 		   }
 	       })
 	.always(function(){
-	   setTimeout(Retainer.ping, PING_INTERVAL, requestData);
+	    if (Retainer.requestData.ping_type == 'starting') {
+		Retainer.requestData.ping_type = 'waiting';
+	    }
+	    setTimeout(Retainer.ping, PING_INTERVAL, requestData);
 	});
     },
 
@@ -75,7 +78,7 @@ var Retainer = {
 
 	    // sneakily override the submit behavior of the iframe
 	    task_frame[0].contentWindow.submit_to_frontend = function() {
-		Retainer.requestData.ping_type = 'waiting';
+		Retainer.requestData.ping_type = 'starting';
 		Retainer.checkForWork(Retainer.requestData);
 	    }
 	});

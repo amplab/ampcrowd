@@ -112,9 +112,6 @@ class AbstractCrowdTask(models.Model):
     # retainer pool
     last_ping = models.DateTimeField(null=True)
 
-    # The type of the last ping
-    last_ping_type = models.CharField(max_length=64)
-
     # Assignment time
     assigned_at = models.DateTimeField(default=datetime.now())
 

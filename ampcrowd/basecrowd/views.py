@@ -230,7 +230,8 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
         logger.info("IS ACCEPTED:" + str(is_accepted))
         logger.info("CURRENT WORKER: %s" % current_worker)
         logger.info("URL: %s" % request.get_full_path())
-        if (current_worker in current_task.group.retainer_pool.active_workers
+        if (current_task.group.retainer_pool.active_workers.filter(
+                worker_id=worker_id).exists()
             and current_task not in current_worker.tasks.all()):
             raise ValueError("Can't join pool twice!")
             # TODO: Make this an html page for the user
@@ -349,20 +350,19 @@ def ping(request, crowd_name):
 
     # update waiting time
     ping_type = request.POST['ping_type']
-    last_ping_type = task.last_ping_type or 'waiting'
-    last_ping = task.last_ping or task.assigned_at
+    last_ping = task.last_ping
     time_since_last_ping = (now - last_ping).total_seconds()
 
-    # Task is waiting, increment wait time.
-    if ping_type == 'waiting':
-        task.time_waited_session += time_since_last_ping
-
-    # Task is done waiting, end the session.
-    elif ping_type == 'working' and last_ping_type == 'waiting':
+    # Task started waiting, create a new session
+    if ping_type == 'starting':
         task.finish_waiting_session()
 
-    # Task is continuing to work, do nothing.
-    elif ping_type == 'working' and task.last_ping_type == 'working':
+    # Task is waiting, increment wait time.
+    elif ping_type == 'waiting':
+        task.time_waited_session += time_since_last_ping
+
+    # Task is working, do nothing.
+    elif ping_type == 'working':
         pass
 
     task.last_ping = now
