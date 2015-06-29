@@ -351,8 +351,6 @@ def ping(request, crowd_name):
 
     # update waiting time
     ping_type = request.POST['ping_type']
-    last_ping = task.last_ping
-    time_since_last_ping = (now - last_ping).total_seconds()
 
     # Task started waiting, create a new session
     if ping_type == 'starting':
@@ -360,6 +358,8 @@ def ping(request, crowd_name):
 
     # Task is waiting, increment wait time.
     elif ping_type == 'waiting':
+        last_ping = task.last_ping
+        time_since_last_ping = (now - last_ping).total_seconds()
         task.time_waited_session += time_since_last_ping
 
     # Task is working, do nothing.
@@ -483,23 +483,15 @@ def finish_pool(request, crowd_name):
 
 @require_POST
 @csrf_exempt
-def understands_retainer(request, crowd_name, worker_id, task_id):
+def understands_retainer(request, crowd_name, worker_id):
     interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
     try:
         worker = model_spec.worker_model.objects.get(worker_id=worker_id)
     except model_spec.worker_model.DoesNotExist:
         return HttpResponse(json.dumps({'error': 'Invalid worker id'}))
 
-    try:
-        task = model_spec.task_model.objects.get(task_id=task_id)
-    except model_spec.task_model.DoesNotExist:
-        return HttpResponse(json.dumps({'error': 'Invalid task id'}))
-
     worker.understands_retainer = True
     worker.save()
     logger.info('%s understands the retainer model.' % worker)
 
-    # Change the task's assignment time
-    task.assigned_at = timezone.now()
-    task.save()
     return HttpResponse(json.dumps({'status': 'ok'}))

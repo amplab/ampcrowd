@@ -51,6 +51,7 @@ function handle_is_accepted()
             modal.on('hidden.bs.modal', function(e) {
                 $.post("/crowds/{{ crowd_name }}/workers/{{ worker_id }}/understands_retainer");
                 start_work();
+                modal.off('hidden.bs.modal');
             });
             modal.modal('show');
         }
@@ -62,7 +63,7 @@ function handle_is_accepted()
     else
     {
         // Show the instructions
-        $('#instructionsModal').modal('show')
+        $('#instructionsModal').modal('show');
     }
 }
 {% endblock handle_is_accepted_func %}
@@ -71,6 +72,9 @@ function handle_is_accepted()
 $(document).ready(function()
 {
     handle_is_accepted();
+    $('#instructionsButton').click(function(e) {
+        $('#instructionsModal').modal('show');
+    });
 });
 {% endblock ready_func %}
 
@@ -105,27 +109,39 @@ $(document).ready(function()
   <!-- Retainer pool status -->
   <div class="row">
     <div class="col-xs-2 col-md-2">
-      <p class="text-center"><big><em>Retainer Pool.</big></em></p>
+      <p class="text-left"><big><em>Retainer Pool.</big></em></p>
     </div>
-    <div class="col-xs-8 col-md-8">
+    <div class="col-xs-6 col-md-6">
       <p class="text-center">
 	<big><em>Wait Time: <span id="waitTime">{{ wait_time|default:"0.00" }}</span> seconds.
 	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed|default:"0" }}</span>.</em></big>
       </p>
     </div>
 
-    <!-- Button to stop working -->
-    {% if is_accepted %}
-    <div class="col-xs-2 col-md-2">
+
+    <div class="col-xs-4 col-md-4">
+
+      <!-- Top of form to stop working -->
+      {% if is_accepted %}
       <form id="submitForm" action="">
 	<input type="hidden" value="{{ assignment_id }}" name="assignmentId" />
 	<input type="hidden" value="0" name="dummyData" />
-	<p>
-	  <input type="submit" id="exitButton" class="btn btn-default btn-sm" value="Finish working" />
+      {% endif %}
+
+	<!-- Button to show instructions modal -->
+	<p class="text-right">
+	  <input type="button" id="instructionsButton" class="btn btn-default btn-sm" value="View Instructions"/>
+
+      <!-- Button to stop working -->
+      {% if is_accepted %}
+	  <input type="submit" id="exitButton" class="btn btn-default btn-sm" value="Finish Working" />
+      {% endif %}
 	</p>
+
+      <!-- Bottom of form to stop working -->
+      {% if is_accepted %}
       </form>
-    </div>
-    {% endif %}
+      {% endif %}
 
     </div>
   </div>
