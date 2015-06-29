@@ -23,22 +23,46 @@ Note: Twitter Bootstrap CSS classes will be available for styling.
 
 <!-- Initialization -->
 {% block handle_is_accepted_func %}
+function start_work()
+{
+    // Set up retainer tracking
+    PING_ENDPOINT = "/crowds/{{ crowd_name }}/retainer/ping/";
+    WORK_ENDPOINT = "/crowds/{{ crowd_name }}/assignments/retainer/";
+    Retainer.init(PING_ENDPOINT, WORK_ENDPOINT);
+
+    // Set up exit button
+    $("#exitButton").click(function(event) {
+        event.preventDefault();
+        var data = prepare_submit_data();
+        submit_to_frontend(data);
+    });
+}
+
 function handle_is_accepted()
 {
     var is_accepted = {{ is_accepted|yesno:"true,false" }};
+    var understands_retainer = {{ understands_retainer|yesno:"true,false" }};
     if (is_accepted)
     {
-        // Set up retainer tracking
-        PING_ENDPOINT = "/crowds/{{ crowd_name }}/retainer/ping/";
-        WORK_ENDPOINT = "/crowds/{{ crowd_name }}/assignments/retainer/";
-        Retainer.init(PING_ENDPOINT, WORK_ENDPOINT);
+        if (!understands_retainer)
+        {
+            // Pop up the instructions
+            var modal = $('#instructionsModal');
+            modal.on('hidden.bs.modal', function(e) {
+                $.post("/crowds/{{ crowd_name }}/workers/{{ worker_id }}/understands_retainer");
+                start_work();
+            });
+            modal.modal('show');
+        }
 
-        // Set up exit button
-        $("#exitButton").click(function(event) {
-            event.preventDefault();
-            var data = prepare_submit_data();
-            submit_to_frontend(data);
-        });
+        else {
+            start_work();
+        }
+    }
+    else
+    {
+        // Show the instructions
+        $('#instructionsModal').modal('show')
     }
 }
 {% endblock handle_is_accepted_func %}
@@ -56,14 +80,29 @@ $(document).ready(function()
 <!-- Override standard layout -->
 {% block body %}
 
-<!-- TODO: popover w/ instructions
-{% if not is_understood %}
-<div class=popover...></div>
-{% endif %}
--->
+<!-- Modal w/ task instructions -->
+<div class="modal fade" data-show="false" id="instructionsModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+        <h4 class="modal-title">Retainer Pool Instructions</h4>
+      </div>
+      <div class="modal-body">
+	<p>Instructions will be written here!</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Get to work!</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-<!-- Instruction panel -->
 <section class="container task-container">
+
+  <!-- Retainer pool status -->
   <div class="row">
     <div class="col-xs-2 col-md-2">
       <p class="text-center"><big><em>Retainer Pool.</big></em></p>

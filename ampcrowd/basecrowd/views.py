@@ -243,7 +243,8 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
             context.update({
                 'wait_time': current_task.time_waited,
                 'tasks_completed': current_worker.completed_tasks_for_pool_session(
-                    current_task.group.retainer_pool, current_task).count()})
+                    current_task.group.retainer_pool, current_task).count(),
+                'understands_retainer': current_worker.understands_retainer})
 
     # Relate workers and tasks (after a worker accepts the task).
     if is_accepted:
@@ -478,4 +479,27 @@ def finish_pool(request, crowd_name):
     pool.status = RetainerPoolStatus.FINISHED
     pool.save()
     logger.info("Retainer pool %s finished" % pool)
+    return HttpResponse(json.dumps({'status': 'ok'}))
+
+@require_POST
+@csrf_exempt
+def understands_retainer(request, crowd_name, worker_id, task_id):
+    interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
+    try:
+        worker = model_spec.worker_model.objects.get(worker_id=worker_id)
+    except model_spec.worker_model.DoesNotExist:
+        return HttpResponse(json.dumps({'error': 'Invalid worker id'}))
+
+    try:
+        task = model_spec.task_model.objects.get(task_id=task_id)
+    except model_spec.task_model.DoesNotExist:
+        return HttpResponse(json.dumps({'error': 'Invalid task id'}))
+
+    worker.understands_retainer = True
+    worker.save()
+    logger.info('%s understands the retainer model.' % worker)
+
+    # Change the task's assignment time
+    task.assigned_at = timezone.now()
+    task.save()
     return HttpResponse(json.dumps({'status': 'ok'}))

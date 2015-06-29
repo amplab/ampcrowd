@@ -10,6 +10,8 @@ urlpatterns = patterns(
     url(r'^(?P<crowd_name>\w+)/assignments/worker/(?P<worker_id>\w+)/task/(?P<task_id>\w+)$',
         views.get_retainer_assignment, name='get_retainer_assignment'),
     url(r'^(?P<crowd_name>\w+)/retainer/finish$', views.finish_pool, name='finish_pool'),
+    url(r'^(?P<crowd_name>\w+)/workers/(?P<worker_id>\w+)/tasks/(?P<task_id>\w+)/understands_retainer$',
+        views.understands_retainer, name='understands_retainer'),
     url(r'^(\w+)/responses/$', views.post_response, name='post_response'),
     url(r'^(\w+)/tasks/$', views.create_task_group, name='create_tasks'),
     url(r'^(\w+)/purge_tasks/$', views.purge_tasks, name='purge_tasks'),

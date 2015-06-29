@@ -159,6 +159,9 @@ class AbstractCrowdWorker(models.Model):
     # The last time this worker pinged the server from a retainer pool
     last_ping = models.DateTimeField(null=True)
 
+    # Has this worker read the retainer pool instructions?
+    understands_retainer = models.BooleanField(default=False)
+
     # Find the tasks the worker has completed during this session in
     # the pool. Avoid double-counting tasks between sessions.
     def completed_tasks_for_pool_session(self, pool, session_task):
