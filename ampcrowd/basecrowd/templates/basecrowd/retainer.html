@@ -95,7 +95,30 @@ $(document).ready(function()
         <h4 class="modal-title">Retainer Pool Instructions</h4>
       </div>
       <div class="modal-body">
-	<p>Instructions will be written here!</p>
+	<p>This task is a <b>Retainer Pool Task</b>, which means it works a
+	  bit differently from standard tasks. In particular:</p>
+	<ol>
+	  <li><p><b>You will be paid a bonus of ${{ waiting_rate }} per minute
+		for waiting</b> on this page until work becomes available.
+	  </p></li>
+	  <li><p>In return, <b>you will be expected to begin work quickly when
+		work</b> is available. Depending on your browser, you will be
+	      alerted of new work in different ways, such as a pop-up or a
+	      flashing tab. Since you will be able to see the alert from other
+	      tabs, <b>you are free to take other tasks while you wait.</b></p>
+	  </li>
+	  <li><p>In addition to your waiting bonus, <b>you will be paid
+		${{ per_task_rate }} per task you complete</b> in the interface.
+	    <p></li>
+	  <li><p><b>You must complete a minimum of {{ min_required_tasks }}
+		tasks or this task will be rejected.</b><p></li>
+	  <li><p>You can continue working until there are no more available
+	      tasks in the pool, but may also choose to leave at any time. If
+	      you choose to leave, <b>you must press the 'Finish Working' button
+	      </b>, or the task will appear abandoned.
+	      <b>Do not close this tab without pressing the button first.</b>
+	      </p></li>
+	</ol>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Get to work!</button>
@@ -113,8 +136,8 @@ $(document).ready(function()
     </div>
     <div class="col-xs-6 col-md-6">
       <p class="text-center">
-	<big><em>Wait Time: <span id="waitTime">{{ wait_time|default:"0.00" }}</span> seconds.
-	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed|default:"0" }}</span>.</em></big>
+	<em>Wait Time: <span id="waitTime">{{ wait_time|default:"0.00" }}</span> seconds x ${{ waiting_rate }} = $<span id="waitPayment">0.00</span>.<br/>
+	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed|default:"0" }}</span> x ${{ per_task_rate }} = $<span id="taskPayment">0.00</span>.</em>
       </p>
     </div>
 
@@ -151,7 +174,14 @@ $(document).ready(function()
     <!-- Looking for work -->
     <div class="well col-xs-12 col-md-12" id="waitingDiv">
       <h1>Waiting for next task...</h1>
-      <p><big><em>Please keep this page open until the task begins. To earn your pay for waiting, you must be available as soon as you are alerted. Depending on your browser you will be alerted in different ways, but keep an eye out for a pop-up or flashing tab in your browser. Since you will be able to see the alert from other tabs, you are free to take other tasks while you wait, <b>as long as you do NOT close this tab</b>, as that will remove you from the waiting area.</em></big></p>
+      <p><big><em>Please keep this page open until the task begins. To earn your
+	    pay for waiting, you must be available as soon as you are alerted.
+	    Depending on your browser you will be alerted in different ways, but
+	    keep an eye out for a pop-up or flashing tab in your browser. Since
+	    you will be able to see the alert from other tabs, you are free to
+	    take other tasks while you wait,
+	    <b>as long as you do NOT close this tab</b>, as that will remove you
+	    from the waiting area.</em></big></p>
     </div>
 
     <!-- Task iframe, hidden to start -->

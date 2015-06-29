@@ -190,7 +190,7 @@ def retire_workers():
                 expired_task.save()
                 wait_time = expired_task.time_waited
 
-                logger.info("%s waited %f minutes on this task."
+                logger.info("%s waited %f seconds on this task."
                             % (worker, wait_time))
 
                 # Count tasks the worker has completed during this session.
@@ -228,6 +228,6 @@ def retire_workers():
                                             list_rate, bonus_amount, worker))
                     crowd_interface.pay_worker_bonus(
                         worker, expired_task, bonus_amount,
-                        "You completed %d tasks and waited %f minutes on a "
+                        "You completed %d tasks and waited %f seconds on a "
                         "retainer pool task. Thank you!" %
                         (num_completed_tasks, wait_time))

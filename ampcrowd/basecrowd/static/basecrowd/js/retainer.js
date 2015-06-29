@@ -23,8 +23,12 @@ var Retainer = {
 	       requestData,
 	       function(data, status){
 		   console.log('pong', data);
-		   $('#waitTime').text(data.wait_time)
+		   $('#waitTime').text(data.wait_time.toFixed(2));
+		   var waitPayment = data.wait_time * data.waiting_rate / 60;
+		   $('#waitPayment').text(waitPayment.toFixed(2));
 		   $('#tasksCompleted').text(data.tasks_completed)
+		   var taskPayment = data.tasks_completed * data.per_task_rate;
+		   $('#taskPayment').text(taskPayment.toFixed(2));
 		   if (data.pool_status == 'finished') {
 		       Retainer.finished = true;
 		   }

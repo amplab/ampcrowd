@@ -236,6 +236,13 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
             raise ValueError("Can't join pool twice!")
             # TODO: Make this an html page for the user
 
+        retainer_config = json.loads(
+            current_task.group.global_config)['retainer_pool']
+        context.update({
+            'waiting_rate': retainer_config['waiting_rate'],
+            'per_task_rate': retainer_config['task_rate'],
+            'min_required_tasks': retainer_config['min_tasks_per_worker']
+        })
         if is_accepted:
             current_worker.pools.add(current_task.group.retainer_pool)
             current_task.assigned_at = timezone.now()
@@ -244,7 +251,8 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
                 'wait_time': current_task.time_waited,
                 'tasks_completed': current_worker.completed_tasks_for_pool_session(
                     current_task.group.retainer_pool, current_task).count(),
-                'understands_retainer': current_worker.understands_retainer})
+                'understands_retainer': current_worker.understands_retainer,
+                })
 
     # Relate workers and tasks (after a worker accepts the task).
     if is_accepted:
@@ -373,12 +381,16 @@ def ping(request, crowd_name):
     worker.save()
     logger.info('ping from worker %s, task %s' % (worker, task))
 
+    retainer_config = json.loads(task.group.global_config)['retainer_pool']
     data = {
         'ping_type': ping_type,
         'wait_time': task.time_waited,
         'tasks_completed': worker.completed_tasks_for_pool_session(
             task.group.retainer_pool, task).count(),
         'pool_status': task.group.retainer_pool.get_status_display(),
+        'waiting_rate': retainer_config['waiting_rate'],
+        'per_task_rate': retainer_config['task_rate'],
+        'min_required_tasks': retainer_config['min_tasks_per_worker'],
     }
     return HttpResponse(json.dumps(data), content_type='application/json')
 
