@@ -63,7 +63,8 @@ def post_retainer_tasks():
                         RetainerPoolStatus.ACTIVE)
         for pool in crowd_model_spec.retainer_pool_model.objects.filter(
                 status__in=valid_states):
-            if pool.active_workers.count() < pool.capacity:
+            num_active_workers = pool.active_workers.count()
+            if num_active_workers < pool.capacity:
                 logger.info("Posting tasks for %s" % pool)
 
                 now = timezone.now()
@@ -185,10 +186,9 @@ def retire_workers():
 
                 # Tally the work done by the worker
                 assert expired_task.workers.count() == 1
-                expired_task.time_waited_total += expired_task.time_waited_session
-                expired_task.time_waited_session = 0
+                expired_task.finish_waiting_session()
                 expired_task.save()
-                wait_time = expired_task.time_waited_total / 60.0
+                wait_time = expired_task.time_waited
 
                 logger.info("%s waited %f minutes on this task."
                             % (worker, wait_time))

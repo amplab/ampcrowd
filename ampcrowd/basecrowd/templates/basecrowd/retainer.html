@@ -70,8 +70,8 @@ $(document).ready(function()
     </div>
     <div class="col-xs-8 col-md-8">
       <p class="text-center">
-	<big><em>Wait Time: <span id="waitTime">{{ wait_time }}</span> seconds.
-	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed }}</span>.</em></big>
+	<big><em>Wait Time: <span id="waitTime">{{ wait_time|default:"0.00" }}</span> seconds.
+	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed|default:"0" }}</span>.</em></big>
       </p>
     </div>
 

@@ -132,6 +132,12 @@ class AbstractCrowdTask(models.Model):
     def time_waited(self):
         return round(self.time_waited_total + self.time_waited_session, 2)
 
+    # Finish a waiting session
+    def finish_waiting_session(self):
+        self.time_waited_total += self.time_waited_session
+        self.time_waited_session = 0
+        # Don't save: caller must save the object.
+
     def __unicode__(self):
         task_str = "Task %s (type %s): %s" % (self.task_id, self.task_type,
                                               self.data)
@@ -261,8 +267,9 @@ class AbstractRetainerPool(models.Model):
             self.save()
 
     def __unicode__(self):
-        return "Retainer Pool %s: capacity %d, status %s" % (
-            self.external_id, self.capacity, self.get_status_display())
+        return "<Retainer Pool %s: %d active workers, capacity %d, status %s>" % (
+            self.external_id, self.active_workers.count(), self.capacity,
+            self.get_status_display())
 
     @property
     def active_workers(self):

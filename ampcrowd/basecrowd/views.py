@@ -359,8 +359,7 @@ def ping(request, crowd_name):
 
     # Task is done waiting, end the session.
     elif ping_type == 'working' and last_ping_type == 'waiting':
-        task.time_waited_total += task.time_waited_session + time_since_last_ping
-        task.time_waited_session = 0
+        task.finish_waiting_session()
 
     # Task is continuing to work, do nothing.
     elif ping_type == 'working' and task.last_ping_type == 'working':
@@ -377,7 +376,8 @@ def ping(request, crowd_name):
         'ping_type': ping_type,
         'wait_time': task.time_waited,
         'tasks_completed': worker.completed_tasks_for_pool_session(
-            task.group.retainer_pool, task).count()
+            task.group.retainer_pool, task).count(),
+        'pool_status': task.group.retainer_pool.get_status_display(),
     }
     return HttpResponse(json.dumps(data), content_type='application/json')
 

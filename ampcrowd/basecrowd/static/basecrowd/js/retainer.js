@@ -15,6 +15,7 @@ var Retainer = {
 	Retainer.requestData.ping_type = 'waiting';
 	Retainer.ping(Retainer.requestData);
 	Retainer.checkForWork(Retainer.requestData);
+	Retainer.finished = false;
     },
 
     ping: function(requestData){
@@ -24,6 +25,9 @@ var Retainer = {
 		   console.log('pong', data);
 		   $('#waitTime').text(data.wait_time)
 		   $('#tasksCompleted').text(data.tasks_completed)
+		   if (data.pool_status == 'finished') {
+		       Retainer.finished = true;
+		   }
 	       })
 	.always(function(){
 	   setTimeout(Retainer.ping, PING_INTERVAL, requestData);
@@ -33,6 +37,13 @@ var Retainer = {
     checkForWork: function(requestData){
 	$('#waitingDiv').show();
 	$('#taskFrame').hide();
+	if (Retainer.finished) {
+	    alert("The required work for this retainer pool has been completed!"
+		  + " Please press 'ok' to submit this HIT and exit the pool.");
+	    var data = prepare_submit_data();
+	    submit_to_frontend(data);
+	    return;
+	}
 	$.get(WORK_ENDPOINT,
 	      requestData,
 	      function(data, status){
@@ -53,7 +64,7 @@ var Retainer = {
 
     hasWork: function(data){
 	console.log('initialize task here');
-	alert('start now');
+	alert('New work is available! Please start working now.');
 
 	var task_frame = $('#taskFrame');
 	task_frame.attr('src', data.task_url);
