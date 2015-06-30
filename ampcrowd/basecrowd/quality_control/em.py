@@ -14,7 +14,7 @@ def make_em_answer(task_obj, model_spec):
     label_set = []
 
     # Build up initial variables for em
-    responses = model_spec.response_model.objects.filter(
+    responses = model_spec.assignment_model.objects.filter(
         task__task_type=task_obj.task_type)
     for response in responses:
 
@@ -41,7 +41,7 @@ def make_em_answer(task_obj, model_spec):
                    label_set).ExpectationMaximization(iterations)
 
     # Gather answer
-    point_ids = json.loads(task_obj.responses.all()[0].content).keys()
+    point_ids = json.loads(task_obj.assignments.all()[0].content).keys()
     answer_label = {}
 
     for point_id in point_ids:

@@ -52,7 +52,7 @@ class InternalCrowdInterface(CrowdInterface):
             .filter(is_complete=False)
 
             # No tasks the worker has already worked on.
-            .exclude(responses__worker__worker_id=worker_id)
+            .exclude(assignments__worker__worker_id=worker_id)
 
             # No tasks that already have enough workers assigned.
             # "Enough" is the number of assignments for the task plus some SLACK

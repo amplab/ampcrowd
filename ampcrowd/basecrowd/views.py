@@ -227,9 +227,6 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
 
         # TODO: consider making this all pools (i.e., a worker can't be in
         # more than one pool at a time).
-        logger.info("IS ACCEPTED:" + str(is_accepted))
-        logger.info("CURRENT WORKER: %s" % current_worker)
-        logger.info("URL: %s" % request.get_full_path())
         if (current_task.group.retainer_pool.active_workers.filter(
                 worker_id=worker_id).exists()
             and current_task not in current_worker.tasks.all()):
@@ -258,7 +255,13 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
     if is_accepted:
         if not current_worker:
             raise ValueError("Accepted tasks must have an associated worker.")
-        if not current_worker.tasks.filter(task_id=current_task.task_id).exists():
+
+        assignment_id = context['assignment_id']
+        if not (current_worker.assignments
+                .filter(assignment_id=assignment_id).exists()):
+            model_spec.assignment_model.objects.create(
+                assignment_id=assignment_id, worker=current_worker,
+                task=current_task)
             current_worker.tasks.add(current_task)
 
     # Add task data to the context.
@@ -310,28 +313,29 @@ def post_response(request, crowd_name):
         ValueError("Response context missing required keys."))
 
     # Check if this is a duplicate response
-    if model_spec.response_model.objects.filter(
-            assignment_id=context['assignment_id']).exists():
+    assignment_id = context['assignment_id']
+    if model_spec.assignment_model.objects.filter(
+            assignment_id=assignment_id,
+            finished_at__isnull=False).exists():
         return HttpResponse('Duplicate!')
 
     # Retrieve the task and worker from the database based on ids.
     current_task = model_spec.task_model.objects.get(task_id=context['task_id'])
     current_worker = model_spec.worker_model.objects.get(
         worker_id=context['worker_id'])
+    assignment = model_spec.assignment_model.objects.get(assignment_id=assignment_id)
 
     # Store this response into the database
-    current_response = model_spec.response_model(
-        task=current_task,
-        worker=current_worker,
-        content=context['answers'],
-        assignment_id=context['assignment_id'])
-    interface.response_pre_save(current_response)
-    current_response.save()
+    assignment.content = context['answers']
+    assignment.finished_at = timezone.now()
+    interface.response_pre_save(assignment)
+    assignment.save()
 
     # Check if this task has been finished
     # If we've gotten too many responses, ignore.
     if (not current_task.is_complete
-        and current_task.responses.count() >= current_task.num_assignments):
+        and (current_task.assignments.filter(finished_at__isnull=False).count()
+             >= current_task.num_assignments)):
         current_task.is_complete = True
         current_task.save()
         gather_answer.delay(current_task.task_id, model_spec)
@@ -411,12 +415,12 @@ def assign_retainer_task(request, crowd_name):
 
     # Look for a task the worker is already assigned to
     assignment_task = None
-    existing_assignments = (worker.tasks
-                            .filter(is_complete=False)
-                            .filter(group__retainer_pool=pool)
-                            .exclude(task_type='retainer'))
+    existing_assignments = (worker.assignments
+                            .filter(finished_at__isnull=True)
+                            .filter(task__group__retainer_pool=pool)
+                            .exclude(task__task_type='retainer'))
     if existing_assignments.exists():
-        assignment_task = existing_assignments[0]
+        assignment_task = existing_assignments[0].task
     else:  # Look for open tasks
         incomplete_tasks = (
 
@@ -430,7 +434,7 @@ def assign_retainer_task(request, crowd_name):
             .exclude(task_type='retainer')
 
             # that the worker hasn't worked on already
-            .exclude(responses__worker=worker))
+            .exclude(assignments__worker=worker))
 
         # First check if the open tasks haven't been assigned to enough workers.
         open_tasks = (

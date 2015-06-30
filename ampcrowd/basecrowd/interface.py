@@ -163,10 +163,10 @@ class CrowdInterface(object):
         pass
 
     @staticmethod
-    def response_pre_save(response_object):
-        """ Process new response objects before they are saved to the DB.
+    def response_pre_save(assignment_object):
+        """ Process new responses before they are saved to the DB.
 
-        `response_object` will be an UNSAVED object of the `response_model`
+        `assignment_object` will be an UNSAVED object of the `assignment_model`
         class according to this crowd's model specification. Its worker,
         task, content, and assignment_id fields will be set according to the
         context provided by `get_response_context`. This method can modify the

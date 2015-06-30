@@ -167,7 +167,7 @@ class AbstractCrowdWorker(models.Model):
     def completed_tasks_for_pool_session(self, pool, session_task):
         try:
             next_session_start = session_task.get_next_by_assigned_at(
-                workers=self, task_type='retainer')
+                workers=self, task_type='retainer').assigned_at
         except session_task.__class__.DoesNotExist:
             next_session_start = timezone.make_aware(datetime.max, None)
         completed_tasks = (
@@ -177,9 +177,9 @@ class AbstractCrowdWorker(models.Model):
 
             # Only tasks that this worker gave answers for within the
             # time of the current session.
-            .filter(responses__worker=self,
-                    responses__created_at__gte=session_task.assigned_at,
-                    responses__created_at__lte=next_session_start))
+            .filter(assignments__worker=self,
+                    assignments__finished_at__gte=session_task.assigned_at,
+                    assignments__finished_at__lte=next_session_start))
         return completed_tasks
 
     def __unicode__(self):
@@ -189,36 +189,45 @@ class AbstractCrowdWorker(models.Model):
         abstract = True
 
 
-# Model for a worker's response to a task
-class AbstractCrowdWorkerResponse(models.Model):
+# Model for a worker's assignment to a task
+class AbstractCrowdWorkerAssignment(models.Model):
 
-    # The task that was responded to, a many-to-one relationship.
+    # The task that was assigned, a many-to-one relationship.
     # The relationship will be auto-generated to the task class of the
     # registered crowd, and can be accessed via the 'task' attribute.
-    # The related_name will be 'responses' to enable reverse lookups, e.g.
-    # task = models.ForeignKey(CrowdTask, related_name='responses')
+    # The related_name will be 'assignments' to enable reverse lookups, e.g.
+    # task = models.ForeignKey(CrowdTask, related_name='assignments')
 
-    # The worker that gave the response, a many-to-one relationship.
+    # The worker who was assigned, a many-to-one relationship.
     # The relationship will be auto-generated to the worker class of the
     # registered crowd, and can be accessed via the 'worker' attribute.
-    # The related_name will be 'responses' to enable reverse lookups, e.g.
-    # worker = models.ForeignKey(CrowdWorker, related_name='responses')
+    # The related_name will be 'assignments' to enable reverse lookups, e.g.
+    # worker = models.ForeignKey(CrowdWorker, related_name='assignments')
 
     # The content of the response (specific to the task type).
-    content = models.TextField()
+    content = models.TextField(null=True)
 
     # The assignment id of this response
-    assignment_id = models.CharField(max_length=200)
+    assignment_id = models.CharField(max_length=200, primary_key=True)
 
-    # The time of the response
-    created_at = models.DateTimeField(default=timezone.now)
+    # The time the assignment was created
+    assigned_at = models.DateTimeField(default=timezone.now)
+
+    # The time the assignment was completed
+    finished_at = models.DateTimeField(null=True)
+
+    # The time the assignment took, in seconds
+    @property
+    def length(self):
+        if self.finished_at:
+            return (self.finished_at - self.assigned_at).total_seconds()
+        return None
 
     def __unicode__(self):
-        return "Response: %s to %s" % (self.worker, self.task)
+        return "Assignment: %s to %s" % (self.worker, self.task)
 
     class Meta:
         abstract = True
-
 
 # Status of a Retainer Pool
 class RetainerPoolStatus:
@@ -323,13 +332,13 @@ class CrowdModelSpecification(object):
                  task_model,
                  group_model,
                  worker_model,
-                 response_model,
+                 assignment_model,
                  retainer_pool_model=None):
         self.name = crowd_name
         self.task_model = task_model
         self.group_model = group_model
         self.worker_model = worker_model
-        self.response_model = response_model
+        self.assignment_model = assignment_model
         self.retainer_pool_model = retainer_pool_model
 
     @staticmethod
@@ -348,12 +357,12 @@ class CrowdModelSpecification(object):
                      'tasks', 'workers')
 
         # responses come from a worker
-        self.add_rel(self.response_model, self.worker_model, models.ForeignKey,
-                     'worker', 'responses')
+        self.add_rel(self.assignment_model, self.worker_model, models.ForeignKey,
+                     'worker', 'assignments')
 
         # responses pertain to a task
-        self.add_rel(self.response_model, self.task_model, models.ForeignKey,
-                     'task', 'responses')
+        self.add_rel(self.assignment_model, self.task_model, models.ForeignKey,
+                     'task', 'assignments')
 
         if self.retainer_pool_model:
             # pools contain workers

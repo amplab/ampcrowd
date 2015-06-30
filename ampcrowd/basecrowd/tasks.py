@@ -218,12 +218,12 @@ def retire_workers():
                     waiting_rate = retain_config['waiting_rate']
                     per_task_rate = retain_config['task_rate']
                     list_rate = retain_config['list_rate']
-                    total_owed = (waiting_rate * wait_time
+                    total_owed = (waiting_rate * wait_time / 60.0
                                   + per_task_rate * num_completed_tasks)
                     bonus_amount = round(total_owed - list_rate, 2)
 
                     logging.info("Paying %f x %f + %f x %d - %f = %f dollars "
-                                 "to %s" % (waiting_rate, wait_time,
+                                 "to %s" % (waiting_rate, wait_time / 60.0,
                                             per_task_rate, num_completed_tasks,
                                             list_rate, bonus_amount, worker))
                     crowd_interface.pay_worker_bonus(
