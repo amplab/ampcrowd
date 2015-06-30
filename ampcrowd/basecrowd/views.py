@@ -104,11 +104,12 @@ def create_task_group(request, crowd_name):
         # task will do so.
         # Create the tasks (1 point per task)
         for point_id, point_content in content.iteritems():
+            task_id = str(uuid.uuid4()) # generate a random id for this task
             task = model_spec.task_model(
                 task_type=configuration['task_type'],
                 data=json.dumps({point_id: point_content}),
                 create_time=pytz.utc.localize(datetime.now()),
-                task_id=point_id,
+                task_id=task_id,
                 group=current_group,
                 num_assignments=configuration['num_assignments'],
                 is_retainer=True,
@@ -164,6 +165,7 @@ def purge_tasks(request, crowd_name):
     tasks = model_spec.task_model.objects.all()
 
     # Call the delete hook, then delete the tasks from our database.
+    # TODO: clean up retainer pool tasks correctly.
     interface.delete_tasks(tasks)
     tasks.delete()
     return HttpResponse('ok')
@@ -419,8 +421,11 @@ def assign_retainer_task(request, crowd_name):
                             .filter(finished_at__isnull=True)
                             .filter(task__group__retainer_pool=pool)
                             .exclude(task__task_type='retainer'))
+
+    logger.info('Looking for assignments for retainer worker...')
     if existing_assignments.exists():
         assignment_task = existing_assignments[0].task
+        logger.info('Found an existing assignment for this worker')
     else:  # Look for open tasks
         incomplete_tasks = (
 
@@ -444,12 +449,13 @@ def assign_retainer_task(request, crowd_name):
             .annotate(num_workers=Count('workers'))
             .filter(num_workers__lt=F('num_assignments')))
         if open_tasks.exists():
+            logger.info('Found an unassigned but open task')
             assignment_task = open_tasks.order_by('?')[0]
             worker.tasks.add(assignment_task)
 
         # Then, check if there in-progress tasks with enough assignments.
         elif incomplete_tasks.exists():
-            exp_config = task.group.global_config.get('experimental')
+            exp_config = json.loads(task.group.global_config).get('experimental')
             if exp_config:
                 straggler_mitigation = exp_config.get('mitigate_stragglers')
             else:
@@ -463,11 +469,15 @@ def assign_retainer_task(request, crowd_name):
                     if not set(t.workers.all()) <= active_workers]
 
                 if abandoned_tasks:
+                    logger.info('Found an assigned but abandoned task.')
                     assignment_task = random.choice(abandoned_tasks)
                     worker.tasks.add(assignment_task)
+                else:
+                    logger.info('All tasks are assigned.')
 
             # Straggler mitigation
             else:
+                logger.info('Assigning to an active task for straggler mitigation.')
                 assignment_task = incomplete_tasks.order_by('?')[0]
                 worker.tasks.add(assignment_task)
 
@@ -485,6 +495,7 @@ def assign_retainer_task(request, crowd_name):
         })
         return HttpResponse(response_data, content_type='application/json')
     else:
+        logger.info('No tasks found!')
         return HttpResponse(json.dumps({'start': False}),
                             content_type='application/json')
 

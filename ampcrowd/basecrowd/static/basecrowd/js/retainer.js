@@ -63,7 +63,7 @@ var Retainer = {
 	      'json'
 	     )
 	.always(function(){
-	    if (Retainer.requestData.ping_type == 'waiting') {
+	    if (Retainer.requestData.ping_type == 'waiting' || Retainer.requestData.ping_type == 'starting') {
 		setTimeout(Retainer.checkForWork, WORK_INTERVAL, requestData);
 	    }
 	});

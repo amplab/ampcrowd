@@ -180,7 +180,7 @@ def retire_workers():
                 logger.info("%s has expired. Cleaning up and paying the "
                             "worker." % expired_task)
 
-                # mark the retainer task as expire
+                # mark the retainer task as expired
                 worker = expired_task.workers.all()[0]
                 expired_task.is_retired = True
 
@@ -189,11 +189,12 @@ def retire_workers():
                 expired_task.finish_waiting_session()
                 expired_task.save()
                 wait_time = expired_task.time_waited
-
                 logger.info("%s waited %f seconds on this task."
                             % (worker, wait_time))
 
                 # Count tasks the worker has completed during this session.
+                assert expired_task.assignments.count() == 1
+                assignment = expired_task.assignments.all()[0]
                 completed_tasks = worker.completed_tasks_for_pool_session(
                     pool, expired_task)
                 num_completed_tasks = completed_tasks.count()
@@ -207,7 +208,7 @@ def retire_workers():
                     logger.info("%s didn't complete enough tasks in the pool, "
                                 "rejecting work." % worker)
                     crowd_interface.reject_task(
-                        expired_task, worker, "You must complete at least %d "
+                        assignment, worker, "You must complete at least %d "
                         "tasks to be approved for this assignment, as stated "
                         "in the HIT instructions." %
                         retain_config['min_tasks_per_worker'])
@@ -227,7 +228,7 @@ def retire_workers():
                                             per_task_rate, num_completed_tasks,
                                             list_rate, bonus_amount, worker))
                     crowd_interface.pay_worker_bonus(
-                        worker, expired_task, bonus_amount,
-                        "You completed %d tasks and waited %f seconds on a "
+                        worker, assignment, bonus_amount,
+                        "You completed %d tasks and waited %f minutes on a "
                         "retainer pool task. Thank you!" %
-                        (num_completed_tasks, wait_time))
+                        (num_completed_tasks, round(wait_time / 60.0, 2)))
