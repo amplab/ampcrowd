@@ -449,8 +449,11 @@ def assign_retainer_task(request, crowd_name):
 
         # Then, check if there in-progress tasks with enough assignments.
         elif incomplete_tasks.exists():
-            # TODO: make configurable with the task group.
-            straggler_mitigation = False
+            exp_config = task.group.global_config.get('experimental')
+            if exp_config:
+                straggler_mitigation = exp_config.get('mitigate_stragglers')
+            else:
+                straggler_mitigation = False
 
             if not straggler_mitigation: # only assign tasks that have been abandoned
                 # Bad performance characteristics! consider rewriting.
