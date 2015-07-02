@@ -508,12 +508,17 @@ def get_retainer_assignment(request, crowd_name, worker_id, task_id):
     interface, model_spec = CrowdRegistry.get_registry_entry(crowd_name)
     logger.info('Retainer worker fetched task assignment.')
 
-    # construct assignment id
+    # fetch assignment if it already exists (e.g. the user refreshed the browser).
+    try:
+        assignment_id = model_spec.assignment_model.objects.get(
+            task_id=task_id, worker_id=worker_id).assignment_id
+    except model_spec.assignment_model.DoesNotExist:
+        assignment_id = str(uuid.uuid4())
     context = {
         'task_id': task_id,
         'worker_id': worker_id,
         'is_accepted': True,
-        'assignment_id': uuid.uuid4()
+        'assignment_id': assignment_id
     }
 
     return _get_assignment(request, crowd_name, interface, model_spec, context)
