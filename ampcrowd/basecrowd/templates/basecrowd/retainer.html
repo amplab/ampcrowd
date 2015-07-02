@@ -121,7 +121,11 @@ $(document).ready(function()
 	</ol>
       </div>
       <div class="modal-footer">
+	{% if is_accepted %}
         <button type="button" class="btn btn-default" data-dismiss="modal">Get to work!</button>
+	{% else %}
+        <button type="button" class="btn btn-default" disabled="disabled">Accept this task to begin work!</button>
+	{% endif %}
       </div>
     </div>
   </div>
@@ -136,8 +140,8 @@ $(document).ready(function()
     </div>
     <div class="col-xs-6 col-md-6">
       <p class="text-center">
-	<em>Wait Time: <span id="waitTime">{{ wait_time|default:"0.00" }}</span> seconds x ${{ waiting_rate }} = $<span id="waitPayment">0.00</span>.<br/>
-	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed|default:"0" }}</span> x ${{ per_task_rate }} = $<span id="taskPayment">0.00</span>.</em>
+	<em>Wait Time: <span id="waitTime">{{ wait_time|default:"0.00" }}</span> seconds x ${{ waiting_rate }}/minute = $<span id="waitPayment">0.00</span>.<br/>
+	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed|default:"0" }}</span> x ${{ per_task_rate }}/task = $<span id="taskPayment">0.00</span>.</em>
       </p>
     </div>
 
@@ -153,7 +157,7 @@ $(document).ready(function()
 
 	<!-- Button to show instructions modal -->
 	<p class="text-right">
-	  <input type="button" id="instructionsButton" class="btn btn-default btn-sm" value="View Instructions"/>
+	  <input type="button" id="instructionsButton" class="btn btn-default btn-sm" value="View Retainer Instructions"/>
 
       <!-- Button to stop working -->
       {% if is_accepted %}
@@ -173,6 +177,7 @@ $(document).ready(function()
 
     <!-- Looking for work -->
     <div class="well col-xs-12 col-md-12" id="waitingDiv">
+      {% if is_accepted %}
       <h1>Waiting for next task...</h1>
       <p><big><em>Please keep this page open until the task begins. To earn your
 	    pay for waiting, you must be available as soon as you are alerted.
@@ -182,6 +187,10 @@ $(document).ready(function()
 	    take other tasks while you wait,
 	    <b>as long as you do NOT close this tab</b>, as that will remove you
 	    from the waiting area.</em></big></p>
+
+      {% else %}
+      <h2 class="text-center">Accept this task to begin work!</h2>
+      {% endif %}
     </div>
 
     <!-- Task iframe, hidden to start -->
