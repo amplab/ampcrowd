@@ -16,6 +16,7 @@ var Retainer = {
 	Retainer.ping(Retainer.requestData);
 	Retainer.checkForWork(Retainer.requestData);
 	Retainer.finished = false;
+	Retainer.alertNeeded = true;
     },
 
     ping: function(requestData){
@@ -56,22 +57,25 @@ var Retainer = {
 	      function(data, status){
 		  if(data.start === true){
 		      Retainer.requestData.ping_type = 'working';
-		      Retainer.hasWork(data);
+		      Retainer.hasWork(data, Retainer.alertNeeded);
 		  }
 		  console.log(data);
 	      },
 	      'json'
 	     )
 	.always(function(){
+	    Retainer.alertNeeded = true;
 	    if (Retainer.requestData.ping_type == 'waiting' || Retainer.requestData.ping_type == 'starting') {
 		setTimeout(Retainer.checkForWork, WORK_INTERVAL, requestData);
+
 	    }
 	});
     },
 
-    hasWork: function(data){
+    hasWork: function(data, show_alert){
 	console.log('initialize task here');
-	alert('New work is available! Please start working now.');
+	if (show_alert)
+	    alert('New work is available! Please start working now.');
 
 	var task_frame = $('#taskFrame');
 	task_frame.attr('src', data.task_url);
@@ -83,6 +87,7 @@ var Retainer = {
 	    // sneakily override the submit behavior of the iframe
 	    task_frame[0].contentWindow.submit_to_frontend = function() {
 		Retainer.requestData.ping_type = 'starting';
+		Retainer.alertNeeded = false;
 		Retainer.checkForWork(Retainer.requestData);
 	    }
 	});
