@@ -399,7 +399,7 @@ def ping(request, crowd_name):
 
         active_assignment = model_spec.assignment_model.objects.get(
             worker=worker, task_id=active_task_id)
-        if active_assignment.finished_at is not None:
+        if active_assignment.terminated:
             terminate_work = True
 
     task.last_ping = now
@@ -437,6 +437,9 @@ def assign_retainer_task(request, crowd_name):
     task = model_spec.task_model.objects.get(task_id=context['task_id'])
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
     pool = task.group.retainer_pool
+    if pool.status != RetainerPoolStatus.ACTIVE:
+        return HttpResponse(json.dumps({'start': False}),
+                            content_type='application/json')
 
     # Look for a task the worker is already assigned to
     assignment_task = None

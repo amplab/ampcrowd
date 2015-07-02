@@ -15,23 +15,28 @@ def make_em_answer(task_obj, model_spec):
 
     # Build up initial variables for em
     responses = model_spec.assignment_model.objects.filter(
-        task__task_type=task_obj.task_type, terminated=False)
+        task__task_type=task_obj.task_type, terminated=False,
+        finished_at__isnull=False)
     for response in responses:
 
+        try:
             answer_list = json.loads(response.content)
-            for point_id in answer_list.keys():
+        except Exception:
+            continue
 
-                worker_id = response.worker.worker_id
-                unique_id = point_id
-                current_label = answer_list[point_id]
+        for point_id in answer_list.keys():
 
-                example_to_worker_label.setdefault(unique_id, []).append(
-                    (worker_id, current_label))
-                worker_to_example_label.setdefault(worker_id, []).append(
-                    (unique_id, current_label))
+            worker_id = response.worker.worker_id
+            unique_id = point_id
+            current_label = answer_list[point_id]
 
-                if current_label not in label_set :
-                    label_set.append(current_label)
+            example_to_worker_label.setdefault(unique_id, []).append(
+                (worker_id, current_label))
+            worker_to_example_label.setdefault(worker_id, []).append(
+                (unique_id, current_label))
+
+            if current_label not in label_set :
+                label_set.append(current_label)
 
     # EM algorithm
     iterations = 20

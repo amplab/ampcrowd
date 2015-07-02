@@ -2,7 +2,10 @@
 def make_mv_answer(task_obj):
     answers = []
 
-    responses = task_obj.assignments.filter(terminated=False)
+    responses = task_obj.assignments.filter(
+        terminated=False, 
+        task__task_type=task_obj.task_type,
+        finished_at__isnull=False)
     for response in responses:
         current_content = response.content.split(",")
         answers.append(current_content)
