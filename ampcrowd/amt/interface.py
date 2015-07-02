@@ -34,12 +34,12 @@ class AMTCrowdInterface(CrowdInterface):
         return create_hit(additional_options)
 
     @staticmethod
-    def pay_worker_bonus(worker_object, task_object, bonus_amount, reason):
-        bonus_worker(worker_object, task_object, bonus_amount, reason)
+    def pay_worker_bonus(worker_object, assignment_object, bonus_amount, reason):
+        bonus_worker(worker_object, assignment_object, bonus_amount, reason)
 
     @staticmethod
-    def reject_task(task_object, worker_object, reason):
-        reject_assignment(task_object, worker_object, reason)
+    def reject_task(assignment_object, worker_object, reason):
+        reject_assignment(assignment_object, reason)
 
     @staticmethod
     def delete_tasks(task_objects):

@@ -229,6 +229,6 @@ def retire_workers():
                                             list_rate, bonus_amount, worker))
                     crowd_interface.pay_worker_bonus(
                         worker, assignment, bonus_amount,
-                        "You completed %d tasks and waited %f minutes on a "
+                        "You completed %d tasks and waited %.2f minutes on a "
                         "retainer pool task. Thank you!" %
                         (num_completed_tasks, round(wait_time / 60.0, 2)))
