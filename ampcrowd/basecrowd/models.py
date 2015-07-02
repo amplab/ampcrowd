@@ -216,6 +216,9 @@ class AbstractCrowdWorkerAssignment(models.Model):
     # The time the assignment was completed
     finished_at = models.DateTimeField(null=True)
 
+    # Was this assignment terminated before the worker submitted work?
+    terminated = models.BooleanField(default=False)
+
     # The time the assignment took, in seconds
     @property
     def length(self):

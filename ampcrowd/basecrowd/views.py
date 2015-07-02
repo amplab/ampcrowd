@@ -342,6 +342,20 @@ def post_response(request, crowd_name):
         current_task.save()
         gather_answer.delay(current_task.task_id, model_spec)
 
+        # Check if the whole group is done
+        group = current_task.group
+        if not (group.tasks
+                .exclude(task_type='retainer')
+                .filter(is_complete=False).exists()):
+
+            # terminate in progress retainer tasks
+            (model_spec.assignment_model.objects
+             .exclude(task__task_type='retainer')
+             .filter(task__group=group,
+                     finished_at__isnull=True)
+             .update(finished_at=timezone.now(),
+                     terminated=True))
+
     return HttpResponse('ok')  # AJAX call succeded.
 
 
@@ -362,6 +376,7 @@ def ping(request, crowd_name):
         ValueError("ping context missing required keys."))
     task = model_spec.task_model.objects.get(task_id=context['task_id'])
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
+    terminate_work = False
 
     # update waiting time
     ping_type = request.POST['ping_type']
@@ -376,9 +391,16 @@ def ping(request, crowd_name):
         time_since_last_ping = (now - last_ping).total_seconds()
         task.time_waited_session += time_since_last_ping
 
-    # Task is working, do nothing.
+    # Task is working, verify that the assignment hasn't been terminated.
     elif ping_type == 'working':
-        pass
+        active_task_id = request.POST.get('active_task', None)
+        if not active_task_id:
+            raise ValueError('Retainer must ping with active task id!')
+
+        active_assignment = model_spec.assignment_model.objects.get(
+            worker=worker, task_id=active_task_id)
+        if active_assignment.finished_at is not None:
+            terminate_work = True
 
     task.last_ping = now
     task.last_ping_type = ping_type
@@ -397,6 +419,7 @@ def ping(request, crowd_name):
         'waiting_rate': retainer_config['waiting_rate'],
         'per_task_rate': retainer_config['task_rate'],
         'min_required_tasks': retainer_config['min_tasks_per_worker'],
+        'terminate_work': terminate_work,
     }
     return HttpResponse(json.dumps(data), content_type='application/json')
 
@@ -491,7 +514,8 @@ def assign_retainer_task(request, crowd_name):
         response_data = json.dumps({
             'start': True,
             'task_url': reverse('basecrowd:get_retainer_assignment',
-                                kwargs=url_args)
+                                kwargs=url_args),
+            'task_id': assignment_task.task_id,
         })
         return HttpResponse(response_data, content_type='application/json')
     else:

@@ -13,15 +13,15 @@ var Retainer = {
 	WORK_ENDPOINT = work_url;
 	Retainer.requestData = prepare_submit_data();
 	Retainer.requestData.ping_type = 'starting';
-	Retainer.ping(Retainer.requestData);
-	Retainer.checkForWork(Retainer.requestData);
+	Retainer.ping();
+	Retainer.checkForWork();
 	Retainer.finished = false;
 	Retainer.alertNeeded = true;
     },
 
-    ping: function(requestData){
+    ping: function(){
 	$.post(PING_ENDPOINT,
-	       requestData,
+	       Retainer.requestData,
 	       function(data, status){
 		   console.log('pong', data);
 		   $('#waitTime').text(data.wait_time.toFixed(2));
@@ -33,16 +33,21 @@ var Retainer = {
 		   if (data.pool_status == 'finished') {
 		       Retainer.finished = true;
 		   }
+		   if (data.terminate_work) {
+		       alert("Your work on this task is no longer needed. "
+			     + "Please press 'ok' to check for more tasks.");
+		       Retainer.switchTasks();
+		   }
 	       })
 	.always(function(){
 	    if (Retainer.requestData.ping_type == 'starting') {
 		Retainer.requestData.ping_type = 'waiting';
 	    }
-	    setTimeout(Retainer.ping, PING_INTERVAL, requestData);
+	    setTimeout(Retainer.ping, PING_INTERVAL);
 	});
     },
 
-    checkForWork: function(requestData){
+    checkForWork: function(){
 	$('#waitingDiv').show();
 	$('#taskFrame').hide();
 	if (Retainer.finished) {
@@ -53,11 +58,14 @@ var Retainer = {
 	    return;
 	}
 	$.get(WORK_ENDPOINT,
-	      requestData,
+	      Retainer.requestData,
 	      function(data, status){
 		  if(data.start === true){
 		      Retainer.requestData.ping_type = 'working';
 		      Retainer.hasWork(data, Retainer.alertNeeded);
+		  }
+		  else {
+		      Retainer.requestData.active_task = '';
 		  }
 		  console.log(data);
 	      },
@@ -66,10 +74,16 @@ var Retainer = {
 	.always(function(){
 	    Retainer.alertNeeded = true;
 	    if (Retainer.requestData.ping_type == 'waiting' || Retainer.requestData.ping_type == 'starting') {
-		setTimeout(Retainer.checkForWork, WORK_INTERVAL, requestData);
+		setTimeout(Retainer.checkForWork, WORK_INTERVAL);
 
 	    }
 	});
+    },
+
+    switchTasks: function() {
+	Retainer.requestData.ping_type = 'starting';
+	Retainer.alertNeeded = false;
+	Retainer.checkForWork();
     },
 
     hasWork: function(data, show_alert){
@@ -77,6 +91,7 @@ var Retainer = {
 	if (show_alert)
 	    alert('New work is available! Please start working now.');
 
+	Retainer.requestData.active_task = data.task_id
 	var task_frame = $('#taskFrame');
 	task_frame.attr('src', data.task_url);
 	task_frame.load(function() {
@@ -85,11 +100,7 @@ var Retainer = {
 	    $('#waitingDiv').hide();
 
 	    // sneakily override the submit behavior of the iframe
-	    task_frame[0].contentWindow.submit_to_frontend = function() {
-		Retainer.requestData.ping_type = 'starting';
-		Retainer.alertNeeded = false;
-		Retainer.checkForWork(Retainer.requestData);
-	    }
+	    task_frame[0].contentWindow.submit_to_frontend = Retainer.switchTasks
 	});
 
     }
