@@ -181,15 +181,12 @@ def retire_workers():
             for expired_task in pool.new_expired_tasks(crowd_model_spec.task_model):
                 logger.info("%s has expired. Cleaning up and paying the "
                             "worker." % expired_task)
-
-                # mark the retainer task as expired
-                worker = expired_task.workers.all()[0]
-                expired_task.is_retired = True
+                success = True
 
                 # Tally the work done by the worker
                 assert expired_task.workers.count() == 1
+                worker = expired_task.workers.all()[0]
                 expired_task.finish_waiting_session()
-                expired_task.save()
                 wait_time = expired_task.time_waited
                 logger.info("%s waited %f seconds on this task."
                             % (worker, wait_time))
@@ -209,28 +206,39 @@ def retire_workers():
                 if num_completed_tasks < retain_config['min_tasks_per_worker']:
                     logger.info("%s didn't complete enough tasks in the pool, "
                                 "rejecting work." % worker)
-                    crowd_interface.reject_task(
-                        assignment, worker, "You must complete at least %d "
-                        "tasks to be approved for this assignment, as stated "
-                        "in the HIT instructions." %
-                        retain_config['min_tasks_per_worker'])
-                    expired_task.rejected_at = timezone.now()
+                    try:
+                        crowd_interface.reject_task(
+                            assignment, worker, "You must complete at least %d "
+                            "tasks to be approved for this assignment, as stated "
+                            "in the HIT instructions." %
+                            retain_config['min_tasks_per_worker'])
+                        expired_task.rejected_at = timezone.now()
+                    except Exception, e:
+                        logger.error('Error rejecting %s' % assignment)
+                        success = False
 
                 # Pay the worker
                 else:
                     waiting_rate = retain_config['waiting_rate']
                     per_task_rate = retain_config['task_rate']
                     list_rate = retain_config['list_rate']
-                    total_owed = (waiting_rate * wait_time / 60.0
-                                  + per_task_rate * num_completed_tasks)
-                    bonus_amount = round(total_owed - list_rate, 2)
+                    bonus_amount, message = assignment.compute_bonus(
+                        waiting_rate, per_task_rate, list_rate, logger)
+                    try:
+                        crowd_interface.pay_worker_bonus(
+                            worker, assignment, bonus_amount, message)
+                        assignment.paid_at = timezone.now()
+                        assignment.save()
+                    except Exception, e:
+                        logger.error('Error paying for %s' % assignment)
+                        success = False
 
-                    logging.info("Paying %f x %f + %f x %d - %f = %f dollars "
-                                 "to %s" % (waiting_rate, wait_time / 60.0,
-                                            per_task_rate, num_completed_tasks,
-                                            list_rate, bonus_amount, worker))
-                    crowd_interface.pay_worker_bonus(
-                        worker, assignment, bonus_amount,
-                        "You completed %d tasks and waited %.2f minutes on a "
-                        "retainer pool task. Thank you!" %
-                        (num_completed_tasks, round(wait_time / 60.0, 2)))
+                        # payment is important--make it explicit when there's an issue
+                        with open('PAYMENT_ERRORS.txt', 'a') as f:
+                            print >>f, str(assignment)
+
+
+                # Mark the task as expired so we don't process it again.
+                if success:
+                    expired_task.is_retired = True
+                    expired_task.save()

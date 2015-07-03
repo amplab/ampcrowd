@@ -222,6 +222,27 @@ class AbstractCrowdWorkerAssignment(models.Model):
     # Was this assignment terminated before the worker submitted work?
     terminated = models.BooleanField(default=False)
 
+    # The time the assignment received payment
+    paid_at = models.DateTimeField(null=True)
+
+    # The amount to pay for this assignment
+    def compute_bonus(self, waiting_rate, task_rate, list_rate, logger=None):
+        wait_minutes = self.task.time_waited / 60.0
+        waiting_payment = waiting_rate * wait_minutes
+        tasks_completed = self.worker.completed_tasks_for_pool_session(
+            self.task.group.retainer_pool, self.task).count()
+        task_payment = task_rate * tasks_completed - list_rate
+        total_bonus = waiting_payment + task_payment
+
+        message = ("You completed %d tasks and waited %.2f minutes on a retainer "
+                   "pool task. Thank you for your work!" % (tasks_completed,
+                                                            round(wait_minutes, 2)))
+        if logger:
+            logger.info("Paying %f x %f + %f x %d - %f = %f dollars to %s" % (
+                    waiting_rate, wait_minutes, task_rate, tasks_completed,
+                    list_rate, total_bonus, self.worker))
+        return (round(total_bonus, 2), message)
+
     # The time the assignment took, in seconds
     @property
     def length(self):
@@ -230,7 +251,7 @@ class AbstractCrowdWorkerAssignment(models.Model):
         return None
 
     def __unicode__(self):
-        return "Assignment: %s to %s" % (self.worker, self.task)
+        return "Assignment %s: %s to %s" % (self.assignment_id, self.worker, self.task)
 
     class Meta:
         abstract = True
