@@ -47,7 +47,8 @@ def make_em_answer(task_obj, model_spec):
 
     # Gather answer
     point_ids = json.loads(task_obj.assignments
-                           .filter(terminated=False)[0].content).keys()
+                           .filter(terminated=False,
+                                   finished_at__isnull=False)[0].content).keys()
     answer_label = {}
 
     for point_id in point_ids:
