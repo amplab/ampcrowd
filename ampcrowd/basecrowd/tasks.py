@@ -137,7 +137,8 @@ def post_retainer_tasks():
         old_task_cutoff = (
             timezone.now()
             - timedelta(seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS))
-        if retainer_task.created_at < old_task_cutoff:
+        not_recruiting = retainer_task.task.group.retainer_pool.status != RetainerPoolStatus.RECRUITING
+        if not_recruiting or retainer_task.created_at < old_task_cutoff:
             try:
                 # delete the underlying task object if no one has accepted it.
                 if not retainer_task.task.workers.exists():
