@@ -243,6 +243,39 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
             'min_required_tasks': retainer_config['min_tasks_per_worker']
         })
         if is_accepted:
+
+            # Normally, a retainer session task can only be accepted by one worker, 
+            # since we set it to have only one assignment. However, on some platforms
+            # (e.g. MTurk), workers can 'return' assignments, and other workers can
+            # pick up the same assignment.
+            # We check for this here, and make sure the first assignment is cleaned up
+            # if we detect a double-assignment.
+            double_assignments = current_task.assignments.exclude(worker=current_worker)
+            if double_assignments.exists():
+                assert double_assignments.count() == 1
+                double_assignment = double_assignments[0]
+
+                # sneakily copy the task to one with a new id, since we know this task
+                # is no longer being used.
+                old_task_id = current_task.task_id
+                double_assignment.worker.tasks.remove(current_task)
+                current_task.task_id = str(uuid.uuid4())
+                current_task.task.save()
+                double_assignment.task = current_task
+                double_assignment.save()
+                double_assignment.worker.tasks.add(current_task)
+
+                # Now clean up the old task object
+                current_task = model_spec.task_model.objects.get(task_id=old_task_id)
+                current_task.create_time = timezone.now()
+                current_task.is_retired = False
+                current_task.last_ping = None
+                current_task.rejected_at = None
+                current_task.time_waited_total = 0
+                current_task.time_waited_session = 0
+                # we'll save the object below.
+
+            # Now, add new worker to the session task's retainer pool.
             current_worker.pools.add(current_task.group.retainer_pool)
             current_task.assigned_at = timezone.now()
             current_task.save()
