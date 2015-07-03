@@ -75,16 +75,16 @@ PING_TIMEOUT_SECONDS = 10
 RETAINER_TASK_EXPIRATION_SECONDS = 180
 
 # Number of tasks to post simultaneously for a single retainer slot.
-NUM_RETAINER_RECRUITMENT_TASKS = 7
+NUM_RETAINER_RECRUITMENT_TASKS = 5
 
 # How frequently to re-run the retainer task posting script.
-RETAINER_POST_TASKS_INTERVAL = 20 # seconds
+RETAINER_POST_TASKS_INTERVAL = 5 # seconds
 
 # How long until we decide that a worker has abandoned the pool.
-RETAINER_WORKER_TIMEOUT_SECONDS = 10
+RETAINER_WORKER_TIMEOUT_SECONDS = 20
 
 # How frequently to re-run the worker retirement script.
-RETAINER_RETIRE_WORKERS_INTERVAL = 20 # seconds
+RETAINER_RETIRE_WORKERS_INTERVAL = 180 # seconds
 
 # Settings for AMQP /Celery
 ###########################
