@@ -6,6 +6,7 @@
 """
 
 from boto.mturk.connection import MTurkConnection, MTurkRequestError
+from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
 from boto.mturk.question import ExternalQuestion
 from boto.mturk.price import Price
 from datetime import timedelta
@@ -74,6 +75,7 @@ def create_hit(hit_options):
     question = ExternalQuestion(
         external_url=url,
         frame_height=options['frame_height'])
+    qualifications = [PercentAssignmentsApprovedRequirement('>', 85, required_to_preview=True)]
     conn = get_amt_connection(options['sandbox'])
 
     try:
@@ -84,7 +86,8 @@ def create_hit(hit_options):
             reward=Price(amount=options['reward']),
             duration=timedelta(minutes=options['duration']),
             max_assignments=options['num_responses'],
-            approval_delay=3600)
+            approval_delay=3600,
+            qualifications=qualifications)
     except MTurkRequestError:
         logger.debug(traceback.format_exc())
         raise AMTException(
@@ -117,7 +120,7 @@ def reject_assignment(assignment, reason):
     except MTurkRequestError as e:
         logging.debug(traceback.format_exc())
         raise AMTException("Couldn't reject assignment %s, worker %s: %s" % (
-            assignment.assignment_id, worker.worker_id, str(e)))
+            assignment.assignment_id, assignment.worker.worker_id, str(e)))
 
 def bonus_worker(worker, assignment, amount, reason):
     crowd_config = json.loads(assignment.task.group.crowd_config)
