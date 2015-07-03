@@ -509,6 +509,9 @@ def assign_retainer_task(request, crowd_name):
 
     # return a url to the assignment
     if assignment_task:
+        if not assignment_task.group.work_start_time:
+            assignment_task.group.work_start_time = timezone.now()
+            assignment_task.group.save()
         url_args = {
             'crowd_name': crowd_name,
             'worker_id': worker.worker_id,

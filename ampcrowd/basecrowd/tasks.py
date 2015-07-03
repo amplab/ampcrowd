@@ -36,6 +36,8 @@ def submit_callback_answer(current_task):
     for key in current_em_answer.keys():
         json_answer['answers'].append({'identifier': key, 'value': current_em_answer[key]})
 
+    json_answer['group_start_time'] = current_task.group.work_start_time.isoformat()
+
     # Send back data using urllib2
     params = {'data' : json.dumps(json_answer)}
     urllib2.urlopen(url, urllib.urlencode(params))

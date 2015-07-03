@@ -55,6 +55,9 @@ class AbstractCrowdTaskGroup(models.Model):
     # When the group was created
     created_at = models.DateTimeField(default=timezone.now)
 
+    # When work on the tasks began
+    work_start_time = models.DateTimeField(null=True)
+
     def __unicode__(self):
         ret = "Task Group %s" % self.group_id
         if self.retainer_pool_status is not None:
