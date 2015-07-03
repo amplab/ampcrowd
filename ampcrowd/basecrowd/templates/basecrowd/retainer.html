@@ -85,7 +85,7 @@ $(document).ready(function()
 {% block body %}
 
 <!-- Modal w/ task instructions -->
-<div class="modal fade" data-show="false" id="instructionsModal">
+<div class="modal fade" data-show="{{ is_accepted|yesno:'true,false' }}" id="instructionsModal">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
@@ -95,6 +95,11 @@ $(document).ready(function()
         <h4 class="modal-title">Retainer Pool Instructions</h4>
       </div>
       <div class="modal-body">
+	{% if pool_status == "finished" %}
+	<p>This Retainer Pool has been closed, and this task will be deleted.
+	  <b>DO NOT ACCEPT THIS TASK</b>, or it will be rejected. Instead, please
+	  look for other retainer pool tasks that are still open.</p>
+	{% else %}
 	<p>This task is a <b>Retainer Pool Task</b>, which means it works a
 	  bit differently from standard tasks. In particular:</p>
 	<ol>
@@ -119,6 +124,7 @@ $(document).ready(function()
 	      <b>Do not close this tab without pressing the button first.</b>
 	      </p></li>
 	</ol>
+	{% endif %}
       </div>
       <div class="modal-footer">
 	{% if is_accepted %}

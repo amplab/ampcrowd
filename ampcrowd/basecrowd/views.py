@@ -284,6 +284,7 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
                 'tasks_completed': current_worker.completed_tasks_for_pool_session(
                     current_task.group.retainer_pool, current_task).count(),
                 'understands_retainer': current_worker.understands_retainer,
+                'pool_status': current_task.group.retainer_pool.get_status_display(),
                 })
 
     # Relate workers and tasks (after a worker accepts the task).
