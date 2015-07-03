@@ -7,6 +7,7 @@
 
 from boto.mturk.connection import MTurkConnection, MTurkRequestError
 from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
+from boto.mturk.qualification import Qualifications
 from boto.mturk.question import ExternalQuestion
 from boto.mturk.price import Price
 from datetime import timedelta
@@ -75,7 +76,9 @@ def create_hit(hit_options):
     question = ExternalQuestion(
         external_url=url,
         frame_height=options['frame_height'])
-    qualifications = [PercentAssignmentsApprovedRequirement('>', 85, required_to_preview=True)]
+    qualifications = Qualifications(
+        requirements=[PercentAssignmentsApprovedRequirement(
+                'GreaterThanOrEqualTo', 85, required_to_preview=True),])
     conn = get_amt_connection(options['sandbox'])
 
     try:
