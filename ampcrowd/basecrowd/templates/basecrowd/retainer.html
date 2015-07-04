@@ -63,7 +63,15 @@ function handle_is_accepted()
     else
     {
         // Show the instructions
+        {% if pool_status == 'finished' %}
+        $('#instructionsModal').modal({
+            keyboard: false,
+            show: true,
+            backdrop: "static"
+        });
+        {% else %}
         $('#instructionsModal').modal('show');
+        {% endif %}
     }
 }
 {% endblock handle_is_accepted_func %}
@@ -89,16 +97,21 @@ $(document).ready(function()
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
+	{% if pool_status == "finished" %}
+	<h4 class="modal-title">Retainer Pool is Closed</h4>
+	{% else %}
 	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
 	  <span aria-hidden="true">&times;</span>
 	</button>
         <h4 class="modal-title">Retainer Pool Instructions</h4>
+	{% endif %}
       </div>
       <div class="modal-body">
 	{% if pool_status == "finished" %}
-	<p>This Retainer Pool has been closed, and this task will be deleted.
-	  <b>DO NOT ACCEPT THIS TASK</b>, or it will be rejected. Instead, please
-	  look for other retainer pool tasks that are still open.</p>
+	<p><b>This Retainer Pool has been closed</b>, and this assignment is no
+	  longer available. <b>DO NOT ACCEPT THIS TASK</b> or it will be rejected.
+	  Instead, <b>please look for other retainer pool tasks that are still 
+	    open.</b></p>
 	{% else %}
 	<p>This task is a <b>Retainer Pool Task</b>, which means it works a
 	  bit differently from standard tasks. In particular:</p>
@@ -127,10 +140,12 @@ $(document).ready(function()
 	{% endif %}
       </div>
       <div class="modal-footer">
+	{% if pool_status != "finished" %}
 	{% if is_accepted %}
         <button type="button" class="btn btn-default" data-dismiss="modal">Get to work!</button>
 	{% else %}
         <button type="button" class="btn btn-default" disabled="disabled">Accept this task to begin work!</button>
+	{% endif %}
 	{% endif %}
       </div>
     </div>

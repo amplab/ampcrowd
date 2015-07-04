@@ -240,7 +240,8 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
         context.update({
             'waiting_rate': retainer_config['waiting_rate'],
             'per_task_rate': retainer_config['task_rate'],
-            'min_required_tasks': retainer_config['min_tasks_per_worker']
+            'min_required_tasks': retainer_config['min_tasks_per_worker'],
+            'pool_status': current_task.group.retainer_pool.get_status_display(),
         })
         if is_accepted:
 
@@ -260,7 +261,7 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
                 old_task_id = current_task.task_id
                 double_assignment.worker.tasks.remove(current_task)
                 current_task.task_id = str(uuid.uuid4())
-                current_task.task.save()
+                current_task.save()
                 double_assignment.task = current_task
                 double_assignment.save()
                 double_assignment.worker.tasks.add(current_task)
@@ -284,7 +285,6 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
                 'tasks_completed': current_worker.completed_tasks_for_pool_session(
                     current_task.group.retainer_pool, current_task).count(),
                 'understands_retainer': current_worker.understands_retainer,
-                'pool_status': current_task.group.retainer_pool.get_status_display(),
                 })
 
     # Relate workers and tasks (after a worker accepts the task).
