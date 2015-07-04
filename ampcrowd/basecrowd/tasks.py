@@ -62,12 +62,16 @@ def post_retainer_tasks():
         logger.info("Crowd %s supports retainer pools, looking for pools that "
                     "need more workers." % crowd_name)
         valid_states = (RetainerPoolStatus.RECRUITING, RetainerPoolStatus.IDLE,
-                        RetainerPoolStatus.ACTIVE)
+                        RetainerPoolStatus.ACTIVE, RetainerPoolStatus.REFILLING)
         for pool in crowd_model_spec.retainer_pool_model.objects.filter(
                 status__in=valid_states):
             num_active_workers = pool.active_workers.count()
             if num_active_workers < pool.capacity:
                 logger.info("Posting tasks for %s" % pool)
+                
+                if pool.status in (
+                    RetainerPoolStatus.ACTIVE, RetainerPoolStatus.IDLE):
+                    pool.status = RetainerPoolStatus.REFILLING
 
                 now = timezone.now()
                 if (pool.last_recruited_at > now - timedelta(
@@ -134,10 +138,19 @@ def post_retainer_tasks():
     # Delete old retainerTasks to keep the listings fresh
     logger.info('Removing old retainer tasks...')
     for retainer_task in RetainerTask.objects.filter(active=True):
+        # Make sure we're actually recruiting
+        retainer_pool = retainer_task.task.group.retainer_pool
+        not_recruiting = retainer_pool.status not in (
+            RetainerPoolStatus.RECRUITING, RetainerPoolStatus.REFILLING)
+        if not_recruiting:
+            # reset the last_recruited timestamp in case we start recruiting again.
+            retainer_pool.last_recruited_at = now - timedelta(
+                seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS)
+            retainer_pool.save()
+            
         old_task_cutoff = (
             timezone.now()
             - timedelta(seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS))
-        not_recruiting = retainer_task.task.group.retainer_pool.status != RetainerPoolStatus.RECRUITING
         if not_recruiting or retainer_task.created_at < old_task_cutoff:
             try:
                 # delete the underlying task object if no one has accepted it.

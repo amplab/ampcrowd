@@ -471,7 +471,7 @@ def assign_retainer_task(request, crowd_name):
     task = model_spec.task_model.objects.get(task_id=context['task_id'])
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
     pool = task.group.retainer_pool
-    if pool.status != RetainerPoolStatus.ACTIVE:
+    if pool.status not in (RetainerPoolStatus.ACTIVE, RetainerPoolStatus.REFILLING):
         return HttpResponse(json.dumps({'start': False}),
                             content_type='application/json')
 
