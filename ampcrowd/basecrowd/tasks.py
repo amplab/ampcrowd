@@ -144,7 +144,7 @@ def post_retainer_tasks():
             RetainerPoolStatus.RECRUITING, RetainerPoolStatus.REFILLING)
         if not_recruiting:
             # reset the last_recruited timestamp in case we start recruiting again.
-            retainer_pool.last_recruited_at = now - timedelta(
+            retainer_pool.last_recruited_at = timezone.now() - timedelta(
                 seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS)
             retainer_pool.save()
             
