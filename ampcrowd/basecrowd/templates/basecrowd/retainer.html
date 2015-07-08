@@ -63,15 +63,12 @@ function handle_is_accepted()
     else
     {
         // Show the instructions
-        {% if pool_status == 'finished' %}
         $('#instructionsModal').modal({
             keyboard: false,
             show: true,
             backdrop: "static"
         });
-        {% else %}
-        $('#instructionsModal').modal('show');
-        {% endif %}
+        console.log("Showed Instructions!");
     }
 }
 {% endblock handle_is_accepted_func %}
@@ -93,15 +90,11 @@ $(document).ready(function()
 {% block body %}
 
 <!-- Modal w/ task instructions -->
-{% if is_accepted %}
 <div class="modal fade" id="instructionsModal">
-{% else %}
-<div class="modal" id="instructionsModal">
-{% endif %}
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-	{% if pool_status == "finished" %}
+	{% if pool_status == "finished" or not is_accepted %}
 	<h4 class="modal-title">Retainer Pool is Closed</h4>
 	{% else %}
 	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -130,7 +123,7 @@ $(document).ready(function()
 	      tabs, <b>you are free to take other tasks while you wait.</b></p>
 	  </li>
 	  <li><p>In addition to your waiting bonus, <b>you will be paid
-		${{ per_task_rate }} per task you complete</b> in the interface.
+		${{ per_task_rate }} per judgment you complete</b> in the interface.
 	    <p></li>
 	  <li><p><b>You must complete a minimum of {{ min_required_tasks }}
 		tasks or this task will be rejected.</b><p></li>
@@ -140,6 +133,10 @@ $(document).ready(function()
 	      </b>, or the task will appear abandoned.
 	      <b>Do not close this tab without pressing the button first.</b>
 	      </p></li>
+	  <li><p><b>Retainer Pools are Experimental</b>, and as a result you may
+	      observe bugs or unexpected behavior while doing the task. Please let
+	      us know if this occurs, and we will try to be responsive and resolve
+	      the issue as quickly as possible.</p>
 	</ol>
 	{% endif %}
       </div>

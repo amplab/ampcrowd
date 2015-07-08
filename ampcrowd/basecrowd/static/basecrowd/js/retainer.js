@@ -35,7 +35,8 @@ var Retainer = {
 		   }
 		   if (data.terminate_work) {
 		       alert("Your work on this task is no longer needed. "
-			     + "Please press 'ok' to check for more tasks.");
+			     + "You will still be paid for this task, but "
+			     + "please press 'ok' to check for more tasks.");
 		       Retainer.switchTasks();
 		   }
 	       })
