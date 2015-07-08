@@ -332,8 +332,8 @@ class AbstractRetainerPool(models.Model):
         return (task_model.objects.filter(
                 task_type='retainer',
                 group__retainer_pool=self)
-                .exclude(
-                assignments__last_ping__gte=time_cutoff))
+                .exclude(assignments__isnull=True)
+                .exclude(assignments__last_ping__gte=time_cutoff))
 
     def new_expired_tasks(self, task_model):
         # expired workers with a retainer task that hasn't been marked retired.
