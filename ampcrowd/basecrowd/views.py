@@ -200,8 +200,10 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
                     **custom_template_context):
     # Retrieve the task based on task_id from the database
     try:
-        current_task = model_spec.task_model.objects.get(
-            task_id=context['task_id'])
+        current_task = (model_spec.task_model.objects
+                        .select_related('group')
+                        .get(task_id=context['task_id']))
+        task_group = current_task.group
     except model_spec.task_model.DoesNotExist:
         raise ValueError('Invalid task id: ' + context['task_id'])
 
@@ -230,7 +232,7 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
 
         # TODO: consider making this all pools (i.e., a worker can't be in
         # more than one pool at a time).
-        pool = current_task.group.retainer_pool
+        pool = task_group.retainer_pool
         if (pool.active_workers.filter(worker_id=worker_id).exists()
             and current_worker.assignments.filter(
                 task__group_retainer_pool=pool,
@@ -240,12 +242,12 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
             # TODO: Make this an html page for the user
 
         retainer_config = json.loads(
-            current_task.group.global_config)['retainer_pool']
+            task_group.global_config)['retainer_pool']
         context.update({
             'waiting_rate': retainer_config['waiting_rate'],
             'per_task_rate': retainer_config['task_rate'],
             'min_required_tasks': retainer_config['min_tasks_per_worker'],
-            'pool_status': current_task.group.retainer_pool.get_status_display(),
+            'pool_status': pool.get_status_display(),
         })
 
     # Relate workers and tasks (after a worker accepts the task).
@@ -274,8 +276,8 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
 
     # Add task data to the context.
     content = json.loads(current_task.data)
-    group_context = json.loads(current_task.group.group_context)
-    crowd_config = json.loads(current_task.group.crowd_config)
+    group_context = json.loads(task_group.group_context)
+    crowd_config = json.loads(task_group.crowd_config)
     context.update(group_context=group_context,
                    content=content,
                    backend_submit_url=interface.get_backend_submit_url(),
@@ -329,8 +331,6 @@ def post_response(request, crowd_name):
 
     # Retrieve the task and worker from the database based on ids.
     current_task = model_spec.task_model.objects.get(task_id=context['task_id'])
-    current_worker = model_spec.worker_model.objects.get(
-        worker_id=context['worker_id'])
     assignment = model_spec.assignment_model.objects.get(assignment_id=assignment_id)
 
     # Store this response into the database
@@ -441,9 +441,12 @@ def assign_retainer_task(request, crowd_name):
     interface.require_context(
         context, ['task_id', 'worker_id'],
         ValueError("retainer assignment context missing required keys."))
-    task = model_spec.task_model.objects.get(task_id=context['task_id'])
+    task = (model_spec.task_model.objects
+            .select_related('group__retainer_pool')
+            .get(task_id=context['task_id']))
+    group = task.group
+    pool = group.retainer_pool
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
-    pool = task.group.retainer_pool
     if pool.status not in (RetainerPoolStatus.ACTIVE, RetainerPoolStatus.REFILLING,
                            RetainerPoolStatus.IDLE):
         return HttpResponse(json.dumps({'start': False}),
@@ -499,7 +502,7 @@ def assign_retainer_task(request, crowd_name):
                 active_workers = set(pool.active_workers.all())
                 abandoned_tasks = [
                     t for t in incomplete_tasks
-                    if not set([a.worker for a in t.assignments.all()]) <= active_workers]
+                    if not set([a.worker for a in t.assignments.select_related('worker').all()]) <= active_workers]
 
                 if abandoned_tasks:
                     logger.info('Found an assigned but abandoned task.')

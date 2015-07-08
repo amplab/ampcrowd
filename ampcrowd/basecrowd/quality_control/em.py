@@ -14,9 +14,10 @@ def make_em_answer(task_obj, model_spec):
     label_set = []
 
     # Build up initial variables for em
-    responses = model_spec.assignment_model.objects.filter(
-        task__task_type=task_obj.task_type, terminated=False,
-        finished_at__isnull=False)
+    responses = (model_spec.assignment_model.objects.filter(
+            task__task_type=task_obj.task_type, terminated=False,
+            finished_at__isnull=False)
+                 .select_related('worker'))
     for response in responses:
 
         try:
