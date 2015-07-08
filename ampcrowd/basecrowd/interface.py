@@ -90,6 +90,21 @@ class CrowdInterface(object):
         pass
 
     @staticmethod
+    def expire_tasks(task_objects):
+        """ Expire multiple tasks on the crowd platform.
+
+        Expiration means making the task no longer available for new workers to
+        accept. It does not necessarily imply deletion, though some crowd
+        platforms may choose to implement it that way.
+
+        `task_objects` is an iterable containing multiple instances of this
+        crowd's task_model. This method should not modify the objects
+        themselves, just handle the remote cleanup.
+        """
+        # Dummy implementation, do nothing
+        pass
+
+    @staticmethod
     def delete_tasks(task_objects):
         """ Delete multiple tasks on the crowd platform.
 

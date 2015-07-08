@@ -5,7 +5,7 @@ from datetime import datetime
 from django.conf import settings
 
 from basecrowd.interface import CrowdInterface
-from connection import create_hit, disable_hit, reject_assignment, bonus_worker
+from connection import create_hit, disable_hit, reject_assignment, bonus_worker, expire_hit
 from connection import AMT_NO_ASSIGNMENT_ID
 from models import Request
 
@@ -40,6 +40,11 @@ class AMTCrowdInterface(CrowdInterface):
     @staticmethod
     def reject_task(assignment_object, worker_object, reason):
         reject_assignment(assignment_object, reason)
+
+    @staticmethod
+    def expire_tasks(task_objects):
+        for task in task_objects:
+            expire_hit(task)
 
     @staticmethod
     def delete_tasks(task_objects):

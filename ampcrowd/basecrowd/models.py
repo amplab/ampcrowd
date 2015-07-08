@@ -104,39 +104,8 @@ class AbstractCrowdTask(models.Model):
     # Is this task a retainer task?
     is_retainer = models.BooleanField(default=False)
 
-
-    # Fields for special 'proto' retainer tasks (task_type = 'retainer')
-    ####################################################################
-
     # Has the task been retired?
     is_retired = models.BooleanField(default=False)
-
-    # The last time someone working on this task pinged the server from a
-    # retainer pool
-    last_ping = models.DateTimeField(null=True)
-
-    # Assignment time
-    assigned_at = models.DateTimeField(default=datetime.now())
-
-    # Rejection time, if the task was rejected
-    rejected_at = models.DateTimeField(null=True)
-
-    # Cumulative waiting time, in seconds
-    time_waited_total = models.FloatField(default=0)
-
-    # Waiting time this session, in seconds
-    time_waited_session = models.FloatField(default=0)
-
-    # Convenience method for accessing total time waited.
-    @property
-    def time_waited(self):
-        return round(self.time_waited_total + self.time_waited_session, 2)
-
-    # Finish a waiting session
-    def finish_waiting_session(self):
-        self.time_waited_total += self.time_waited_session
-        self.time_waited_session = 0
-        # Don't save: caller must save the object.
 
     def __unicode__(self):
         task_str = "Task %s (type %s): %s" % (self.task_id, self.task_type,
@@ -167,23 +136,11 @@ class AbstractCrowdWorker(models.Model):
 
     # Find the tasks the worker has completed during this session in
     # the pool. Avoid double-counting tasks between sessions.
-    def completed_tasks_for_pool_session(self, pool, session_task):
-        try:
-            next_session_start = session_task.get_next_by_assigned_at(
-                workers=self, task_type='retainer').assigned_at
-        except session_task.__class__.DoesNotExist:
-            next_session_start = timezone.make_aware(datetime.max, None)
-        completed_tasks = (
-            self.tasks
-            .exclude(task_type='retainer')
-            .filter(group__retainer_pool=pool)
-
-            # Only tasks that this worker gave answers for within the
-            # time of the current session.
-            .filter(assignments__worker=self,
-                    assignments__finished_at__gte=session_task.assigned_at,
-                    assignments__finished_at__lte=next_session_start))
-        return completed_tasks
+    def completed_assignments_for_pool_session(self, session_task):
+        assert session_task.task_type == 'retainer'
+        return session_task.work_assignments.filter(
+            worker=self, 
+            finished_at__isnull=False)
 
     def __unicode__(self):
         return "Worker %s" % self.worker_id
@@ -201,6 +158,13 @@ class AbstractCrowdWorkerAssignment(models.Model):
     # The related_name will be 'assignments' to enable reverse lookups, e.g.
     # task = models.ForeignKey(CrowdTask, related_name='assignments')
 
+    # The retainer session task that this assignment pertains to, a
+    # many-to-one relationship. The relationship will be auto-generated
+    # to the task class of the registered crowd, and can be accessed via 
+    # the 'retainer_session_task' attribute. The related_name will be 
+    # 'work_assignments' to enable reverse lookups, e.g.
+    # retainer_session_task = models.ForeignKey(CrowdTask, related_name='work_assignments')
+
     # The worker who was assigned, a many-to-one relationship.
     # The relationship will be auto-generated to the worker class of the
     # registered crowd, and can be accessed via the 'worker' attribute.
@@ -216,21 +180,38 @@ class AbstractCrowdWorkerAssignment(models.Model):
     # The time the assignment was created
     assigned_at = models.DateTimeField(default=timezone.now)
 
+    # Rejection time, if the task was rejected
+    rejected_at = models.DateTimeField(null=True)
+
     # The time the assignment was completed
     finished_at = models.DateTimeField(null=True)
 
     # Was this assignment terminated before the worker submitted work?
     terminated = models.BooleanField(default=False)
 
+    # Fields related to paying the worker
+    #####################################
+
     # The time the assignment received payment
     paid_at = models.DateTimeField(null=True)
 
+    # The amount paid as a bonus
+    amount_paid_bonus = models.FloatField(default=0.0)
+    
+    # The amount paid as task price
+    amount_paid_list = models.FloatField(default=0.0)
+
+    # Convenience method: total amount paid
+    @property
+    def amount_paid(self):
+        return round(self.amount_paid_bonus + self.amount_paid_list, 2)
+
     # The amount to pay for this assignment
     def compute_bonus(self, waiting_rate, task_rate, list_rate, logger=None):
-        wait_minutes = self.task.time_waited / 60.0
+        wait_minutes = self.time_waited / 60.0
         waiting_payment = waiting_rate * wait_minutes
-        tasks_completed = self.worker.completed_tasks_for_pool_session(
-            self.task.group.retainer_pool, self.task).count()
+        tasks_completed = self.worker.completed_assignments_for_pool_session(
+            self.task).count()
         task_payment = task_rate * tasks_completed - list_rate
         total_bonus = waiting_payment + task_payment
 
@@ -238,10 +219,35 @@ class AbstractCrowdWorkerAssignment(models.Model):
                    "pool task. Thank you for your work!" % (tasks_completed,
                                                             round(wait_minutes, 2)))
         if logger:
-            logger.info("Paying %f x %f + %f x %d - %f = %f dollars to %s" % (
+            logger.info("Paying %f x %f + %f x %d - %f = %f dollars to %s for %s" % (
                     waiting_rate, wait_minutes, task_rate, tasks_completed,
-                    list_rate, total_bonus, self.worker))
+                    list_rate, total_bonus, self.worker, self))
         return (round(total_bonus, 2), message)
+
+
+    # Fields related to tracking the worker's wait time
+    ###################################################
+
+    # The last time someone working on this task pinged the server from a
+    # retainer pool
+    last_ping = models.DateTimeField(null=True)
+
+    # Cumulative waiting time, in seconds
+    time_waited_total = models.FloatField(default=0)
+
+    # Waiting time this session, in seconds
+    time_waited_session = models.FloatField(default=0)
+
+    # Convenience method for accessing total time waited.
+    @property
+    def time_waited(self):
+        return round(self.time_waited_total + self.time_waited_session, 2)
+
+    # Finish a waiting session
+    def finish_waiting_session(self):
+        self.time_waited_total += self.time_waited_session
+        self.time_waited_session = 0
+        # Don't save: caller must save the object.
 
     # The time the assignment took, in seconds
     @property
@@ -313,16 +319,19 @@ class AbstractRetainerPool(models.Model):
     def active_workers(self):
         time_cutoff = timezone.now() - timedelta(
             seconds=settings.PING_TIMEOUT_SECONDS)
-        return self.workers.filter(tasks__task_type='retainer',
-                                   tasks__group__retainer_pool=self,
-                                   tasks__last_ping__gte=time_cutoff)
+        return self.workers.filter(assignments__task__task_type='retainer',
+                                   assignments__task__group__retainer_pool=self,
+                                   assignments__last_ping__gte=time_cutoff)
 
     def expired_tasks(self, task_model):
         time_cutoff = timezone.now() - timedelta(
             seconds=settings.RETAINER_WORKER_TIMEOUT_SECONDS)
-        return task_model.objects.filter(task_type='retainer',
-                                  group__retainer_pool=self,
-                                  last_ping__lt=time_cutoff)
+        return (task_model.objects.filter(
+                task_type='retainer',
+                group__retainer_pool=self)
+                .exclude(
+                assignments__last_ping__gte=time_cutoff))
+
     def new_expired_tasks(self, task_model):
         # expired workers with a retainer task that hasn't been marked retired.
         return self.expired_tasks(task_model).filter(is_retired=False)
@@ -381,15 +390,11 @@ class CrowdModelSpecification(object):
         self.add_rel(self.task_model, self.group_model, models.ForeignKey,
                      'group', 'tasks')
 
-        # workers work on many tasks, each task might have multiple workers
-        self.add_rel(self.worker_model, self.task_model, models.ManyToManyField,
-                     'tasks', 'workers')
-
-        # responses come from a worker
+        # assignments are assigned to a worker
         self.add_rel(self.assignment_model, self.worker_model, models.ForeignKey,
                      'worker', 'assignments')
 
-        # responses pertain to a task
+        # assignments pertain to a task
         self.add_rel(self.assignment_model, self.task_model, models.ForeignKey,
                      'task', 'assignments')
 
@@ -402,3 +407,7 @@ class CrowdModelSpecification(object):
             self.add_rel(self.group_model, self.retainer_pool_model,
                          models.ForeignKey, 'retainer_pool', 'task_groups',
                          null=True)
+            
+            # assignments fall under a particular retainer pool session.
+            self.add_rel(self.assignment_model, self.task_model, models.ForeignKey,
+                         'retainer_session_task', 'work_assignments', null=True)

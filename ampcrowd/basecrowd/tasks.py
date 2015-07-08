@@ -113,7 +113,7 @@ def post_retainer_tasks():
                     logger.info("Created %s" % retainer_task)
 
             # if a pool has finished recruiting, start tasks appropriately
-            elif pool.status == RetainerPoolStatus.RECRUITING:
+            elif pool.status in (RetainerPoolStatus.RECRUITING, RetainerPoolStatus.REFILLING):
 
                 logger.info("%s is done recruiting" % pool)
                 waiting_task_groups = crowd_model_spec.group_model.objects.filter(
@@ -138,8 +138,13 @@ def post_retainer_tasks():
     # Delete old retainerTasks to keep the listings fresh
     logger.info('Removing old retainer tasks...')
     for retainer_task in RetainerTask.objects.filter(active=True):
+        # Did we already process this retainer_task?
+        session_task = retainer_task.task
+        if not session_task:
+            continue
+
         # Make sure we're actually recruiting
-        retainer_pool = retainer_task.task.group.retainer_pool
+        retainer_pool = session_task.group.retainer_pool
         not_recruiting = retainer_pool.status not in (
             RetainerPoolStatus.RECRUITING, RetainerPoolStatus.REFILLING)
         if not_recruiting:
@@ -147,32 +152,40 @@ def post_retainer_tasks():
             retainer_pool.last_recruited_at = timezone.now() - timedelta(
                 seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS)
             retainer_pool.save()
-            
+
+        # Always kill off recruitment tasks for finished pools
+        pool_finished = (retainer_pool.status == RetainerPoolStatus.FINISHED)
+
+        # Kill off tasks that have been around for too long
         old_task_cutoff = (
             timezone.now()
             - timedelta(seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS))
         if not_recruiting or retainer_task.created_at < old_task_cutoff:
             try:
-                # delete the underlying task object if no one has accepted it.
-                if not retainer_task.task.workers.exists():
-                    interface, _ = CrowdRegistry.get_registry_entry(
-                        retainer_task.crowd_name)
-                    interface.delete_tasks([retainer_task.task,])
-                    retainer_task.task.delete()
-                    logger.info("Deleted old task %s" % retainer_task.task)
+                was_assigned = session_task.assignments.exists()
+                interface, _ = CrowdRegistry.get_registry_entry(
+                    retainer_task.crowd_name)
+                # delete the crowd platform task if no one has accepted it.
+                if not was_assigned:
+                    interface.delete_tasks([session_task,])
+                    logger.info("Deleted platform task %s" % session_task.task_id)
+                    session_task.delete()
+                    logger.info("Deleted ampcrowd task object %s" % session_task)
+                    retainer_task.active = False
+                    retainer_task.save()
+                
+                # expire the crowd platform task if the pool is finished
+                elif pool_finished:
+                    interface.expire_tasks([session_task,])
+                    logger.info("Expired platform task %s" % session_task.task_id)
+                    retainer_task.active = False
+                    retainer_task.save()
 
                 else:
-                    logger.info("Not deleting %s, it has a worker."
-                                % retainer_task.task)
-
-                # Mark the recruitment task inactive
-                retainer_task.active = False
-                retainer_task.save()
-                logger.info('Deleted old retainer task %s' % retainer_task)
+                    logger.info("Not deleting %s, it has a worker." % session_task)
 
             except Exception, e:
-                logger.warning('Could not remove task %s: %s' % (
-                    retainer_task.task, str(e)))
+                logger.warning('Could not remove task %s: %s' % (session_task, str(e)))
 
 @celery.task
 def retire_workers():
@@ -194,62 +207,75 @@ def retire_workers():
         for pool in crowd_model_spec.retainer_pool_model.objects.all():
             for expired_task in pool.new_expired_tasks(crowd_model_spec.task_model):
                 logger.info("%s has expired. Cleaning up and paying the "
-                            "worker." % expired_task)
+                            "workers." % expired_task)
                 success = True
 
-                # Tally the work done by the worker
-                assert expired_task.workers.count() == 1
-                worker = expired_task.workers.all()[0]
-                expired_task.finish_waiting_session()
-                wait_time = expired_task.time_waited
-                logger.info("%s waited %f seconds on this task."
-                            % (worker, wait_time))
+                # Tally the work done by workers on this session task
+                assignments = expired_task.assignments.all()
+                logger.info("%d workers on session %s" %
+                            (assignments.count(), expired_task))
+                for assignment in assignments:
+                    logger.info("Proccessing assignment %s" % assignment)
+                    worker = assignment.worker
+                    assignment.finish_waiting_session()
+                    wait_time = assignment.time_waited
+                    logger.info("%s waited %f seconds in this session." %
+                                (worker, wait_time))
 
-                # Count tasks the worker has completed during this session.
-                assert expired_task.assignments.count() == 1
-                assignment = expired_task.assignments.all()[0]
-                completed_tasks = worker.completed_tasks_for_pool_session(
-                    pool, expired_task)
-                num_completed_tasks = completed_tasks.count()
-                logger.info("%s completed %d tasks." % (worker,
-                                                        num_completed_tasks))
+                    # Count tasks the worker has completed during this session.
+                    completed_assignments = worker.completed_assignments_for_pool_session(
+                        expired_task)
+                    num_completed_tasks = completed_assignments.count()
+                    logger.info("%s completed %d tasks." % (worker,
+                                                            num_completed_tasks))
 
-                # Make sure the worker has completed the required number of tasks
-                group_config = json.loads(expired_task.group.global_config)
-                retain_config = group_config['retainer_pool']
-                if num_completed_tasks < retain_config['min_tasks_per_worker']:
-                    logger.info("%s didn't complete enough tasks in the pool, "
-                                "rejecting work." % worker)
-                    try:
-                        crowd_interface.reject_task(
-                            assignment, worker, "You must complete at least %d "
-                            "tasks to be approved for this assignment, as stated "
-                            "in the HIT instructions." %
-                            retain_config['min_tasks_per_worker'])
-                        expired_task.rejected_at = timezone.now()
-                    except Exception, e:
-                        logger.error('Error rejecting %s' % assignment)
-                        success = False
+                    # Make sure the worker has completed the required number of tasks
+                    group_config = json.loads(expired_task.group.global_config)
+                    retain_config = group_config['retainer_pool']
+                    if (num_completed_tasks < retain_config['min_tasks_per_worker']
+                        and assignment.rejected_at is None):
+                        logger.info("%s didn't complete enough tasks in the pool, "
+                                    "rejecting work." % worker)
+                        try:
+                            crowd_interface.reject_task(
+                                assignment, worker, "You must complete at least %d "
+                                "tasks to be approved for this assignment, as stated "
+                                "in the HIT instructions." %
+                                retain_config['min_tasks_per_worker'])
+                            assignment.rejected_at = timezone.now()
+                        except Exception, e:
+                            logger.error('Error rejecting %s' % assignment)
+                            success = False
+                    elif assignment.rejected_at is not None:
+                        logger.info("%s already rejected, no need to reject twice." % assignment)
+                    else:
+                        logger.info("%s was valid, and doesn't need rejection." % assignment)
+                            
+                    # Pay the worker if we haven't already.
+                    if assignment.paid_at is None and assignment.rejected_at is None and success:
+                        waiting_rate = retain_config['waiting_rate']
+                        per_task_rate = retain_config['task_rate']
+                        list_rate = retain_config['list_rate']
+                        bonus_amount, message = assignment.compute_bonus(
+                            waiting_rate, per_task_rate, list_rate, logger)
+                        try:
+                            crowd_interface.pay_worker_bonus(
+                                worker, assignment, bonus_amount, message)
+                            assignment.amount_paid_bonus = bonus_amount
+                            assignment.amount_paid_list = list_rate
+                            assignment.paid_at = timezone.now()
+                            assignment.save()
+                        except Exception, e:
+                            logger.error('Error paying for %s' % assignment)
+                            success = False
 
-                # Pay the worker
-                else:
-                    waiting_rate = retain_config['waiting_rate']
-                    per_task_rate = retain_config['task_rate']
-                    list_rate = retain_config['list_rate']
-                    bonus_amount, message = assignment.compute_bonus(
-                        waiting_rate, per_task_rate, list_rate, logger)
-                    try:
-                        crowd_interface.pay_worker_bonus(
-                            worker, assignment, bonus_amount, message)
-                        assignment.paid_at = timezone.now()
-                        assignment.save()
-                    except Exception, e:
-                        logger.error('Error paying for %s' % assignment)
-                        success = False
-
-                        # payment is important--make it explicit when there's an issue
-                        with open('PAYMENT_ERRORS.txt', 'a') as f:
-                            print >>f, str(assignment)
+                            # payment is important--make it explicit when there's an issue
+                            with open('PAYMENT_ERRORS.txt', 'a') as f:
+                                print >>f, str(assignment)
+                    elif assignment.paid_at is not None:
+                        logger.info("%s already paid, no need to pay twice." % assignment)
+                    else:
+                        logger.info("%s was rejected or there was an error, not paying worker." % assignment)
 
 
                 # Mark the task as expired so we don't process it again.

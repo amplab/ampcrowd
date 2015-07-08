@@ -104,6 +104,17 @@ def create_hit(hit_options):
     return create_response[0].HITId
 
 
+def expire_hit(task):
+    crowd_config = json.loads(task.group.crowd_config)
+    conn = get_amt_connection(crowd_config['sandbox'])
+    try:
+        conn.expire_hit(task.task_id)
+    except MTurkRequestError as e:
+        logging.debug(traceback.format_exc())
+        raise AMTException(
+            "Couldn't expire HIT " + task.task_id + ": " + str(e)
+        )
+
 def disable_hit(task):
     crowd_config = json.loads(task.group.crowd_config)
     conn = get_amt_connection(crowd_config['sandbox'])

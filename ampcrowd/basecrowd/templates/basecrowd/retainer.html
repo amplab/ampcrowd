@@ -93,7 +93,11 @@ $(document).ready(function()
 {% block body %}
 
 <!-- Modal w/ task instructions -->
-<div class="modal fade" data-show="{{ is_accepted|yesno:'true,false' }}" id="instructionsModal">
+{% if is_accepted %}
+<div class="modal fade" id="instructionsModal">
+{% else %}
+<div class="modal" id="instructionsModal">
+{% endif %}
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">

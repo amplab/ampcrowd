@@ -13,6 +13,7 @@ import pytz
 import json
 import os
 import logging
+import random
 import uuid
 
 from basecrowd.interface import CrowdRegistry
@@ -229,9 +230,12 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
 
         # TODO: consider making this all pools (i.e., a worker can't be in
         # more than one pool at a time).
-        if (current_task.group.retainer_pool.active_workers.filter(
-                worker_id=worker_id).exists()
-            and current_task not in current_worker.tasks.all()):
+        pool = current_task.group.retainer_pool
+        if (pool.active_workers.filter(worker_id=worker_id).exists()
+            and current_worker.assignments.filter(
+                task__group_retainer_pool=pool,
+                finished_at__isnull=True)
+            .exclude(task=current_task).exists()):
             raise ValueError("Can't join pool twice!")
             # TODO: Make this an html page for the user
 
@@ -243,49 +247,6 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
             'min_required_tasks': retainer_config['min_tasks_per_worker'],
             'pool_status': current_task.group.retainer_pool.get_status_display(),
         })
-        if is_accepted:
-
-            # Normally, a retainer session task can only be accepted by one worker, 
-            # since we set it to have only one assignment. However, on some platforms
-            # (e.g. MTurk), workers can 'return' assignments, and other workers can
-            # pick up the same assignment.
-            # We check for this here, and make sure the first assignment is cleaned up
-            # if we detect a double-assignment.
-            double_assignments = current_task.assignments.exclude(worker=current_worker)
-            if double_assignments.exists():
-                assert double_assignments.count() == 1
-                double_assignment = double_assignments[0]
-
-                # sneakily copy the task to one with a new id, since we know this task
-                # is no longer being used.
-                old_task_id = current_task.task_id
-                double_assignment.worker.tasks.remove(current_task)
-                current_task.task_id = str(uuid.uuid4())
-                current_task.save()
-                double_assignment.task = current_task
-                double_assignment.save()
-                double_assignment.worker.tasks.add(current_task)
-
-                # Now clean up the old task object
-                current_task = model_spec.task_model.objects.get(task_id=old_task_id)
-                current_task.create_time = timezone.now()
-                current_task.is_retired = False
-                current_task.last_ping = None
-                current_task.rejected_at = None
-                current_task.time_waited_total = 0
-                current_task.time_waited_session = 0
-                # we'll save the object below.
-
-            # Now, add new worker to the session task's retainer pool.
-            current_worker.pools.add(current_task.group.retainer_pool)
-            current_task.assigned_at = timezone.now()
-            current_task.save()
-            context.update({
-                'wait_time': current_task.time_waited,
-                'tasks_completed': current_worker.completed_tasks_for_pool_session(
-                    current_task.group.retainer_pool, current_task).count(),
-                'understands_retainer': current_worker.understands_retainer,
-                })
 
     # Relate workers and tasks (after a worker accepts the task).
     if is_accepted:
@@ -293,12 +254,23 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
             raise ValueError("Accepted tasks must have an associated worker.")
 
         assignment_id = context['assignment_id']
-        if not (current_worker.assignments
-                .filter(assignment_id=assignment_id).exists()):
-            model_spec.assignment_model.objects.create(
+        try:
+            assignment = current_worker.assignments.get(assignment_id=assignment_id)
+        except model_spec.assignment_model.DoesNotExist:
+            assignment = model_spec.assignment_model.objects.create(
                 assignment_id=assignment_id, worker=current_worker,
                 task=current_task)
-            current_worker.tasks.add(current_task)
+
+        # Add the new worker to the session task's retainer pool.
+        if current_task.task_type == 'retainer':
+            current_worker.pools.add(pool)
+            assignment.save()
+            context.update({
+                'wait_time': assignment.time_waited,
+                'tasks_completed': current_worker.completed_assignments_for_pool_session(
+                        current_task).count(),
+                'understands_retainer': current_worker.understands_retainer,
+                })
 
     # Add task data to the context.
     content = json.loads(current_task.data)
@@ -406,10 +378,12 @@ def ping(request, crowd_name):
     # get and validate context
     context = interface.get_response_context(request)
     interface.require_context(
-        context, ['task_id', 'worker_id'],
+        context, ['task_id', 'worker_id', 'assignment_id'],
         ValueError("ping context missing required keys."))
     task = model_spec.task_model.objects.get(task_id=context['task_id'])
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
+    assignment = model_spec.assignment_model.objects.get(
+        assignment_id=context['assignment_id'])
     terminate_work = False
 
     # update waiting time
@@ -417,13 +391,13 @@ def ping(request, crowd_name):
 
     # Task started waiting, create a new session
     if ping_type == 'starting':
-        task.finish_waiting_session()
+        assignment.finish_waiting_session()
 
     # Task is waiting, increment wait time.
     elif ping_type == 'waiting':
-        last_ping = task.last_ping
+        last_ping = assignment.last_ping
         time_since_last_ping = (now - last_ping).total_seconds()
-        task.time_waited_session += time_since_last_ping
+        assignment.time_waited_session += time_since_last_ping
 
     # Task is working, verify that the assignment hasn't been terminated.
     elif ping_type == 'working':
@@ -436,9 +410,8 @@ def ping(request, crowd_name):
         if active_assignment.terminated:
             terminate_work = True
 
-    task.last_ping = now
-    task.last_ping_type = ping_type
-    task.save()
+    assignment.last_ping = now
+    assignment.save()
     worker.last_ping = now
     worker.save()
     logger.info('ping from worker %s, task %s' % (worker, task))
@@ -446,9 +419,9 @@ def ping(request, crowd_name):
     retainer_config = json.loads(task.group.global_config)['retainer_pool']
     data = {
         'ping_type': ping_type,
-        'wait_time': task.time_waited,
-        'tasks_completed': worker.completed_tasks_for_pool_session(
-            task.group.retainer_pool, task).count(),
+        'wait_time': assignment.time_waited,
+        'tasks_completed': worker.completed_assignments_for_pool_session(
+            task).count(),
         'pool_status': task.group.retainer_pool.get_status_display(),
         'waiting_rate': retainer_config['waiting_rate'],
         'per_task_rate': retainer_config['task_rate'],
@@ -471,7 +444,8 @@ def assign_retainer_task(request, crowd_name):
     task = model_spec.task_model.objects.get(task_id=context['task_id'])
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
     pool = task.group.retainer_pool
-    if pool.status not in (RetainerPoolStatus.ACTIVE, RetainerPoolStatus.REFILLING):
+    if pool.status not in (RetainerPoolStatus.ACTIVE, RetainerPoolStatus.REFILLING,
+                           RetainerPoolStatus.IDLE):
         return HttpResponse(json.dumps({'start': False}),
                             content_type='application/json')
 
@@ -506,12 +480,11 @@ def assign_retainer_task(request, crowd_name):
             incomplete_tasks
 
             # that haven't been assigned to enough workers yet
-            .annotate(num_workers=Count('workers'))
+            .annotate(num_workers=Count('assignments'))
             .filter(num_workers__lt=F('num_assignments')))
         if open_tasks.exists():
             logger.info('Found an unassigned but open task')
             assignment_task = open_tasks.order_by('?')[0]
-            worker.tasks.add(assignment_task)
 
         # Then, check if there in-progress tasks with enough assignments.
         elif incomplete_tasks.exists():
@@ -526,12 +499,11 @@ def assign_retainer_task(request, crowd_name):
                 active_workers = set(pool.active_workers.all())
                 abandoned_tasks = [
                     t for t in incomplete_tasks
-                    if not set(t.workers.all()) <= active_workers]
+                    if not set([a.worker for a in t.assignments.all()]) <= active_workers]
 
                 if abandoned_tasks:
                     logger.info('Found an assigned but abandoned task.')
                     assignment_task = random.choice(abandoned_tasks)
-                    worker.tasks.add(assignment_task)
                 else:
                     logger.info('All tasks are assigned.')
 
@@ -539,10 +511,25 @@ def assign_retainer_task(request, crowd_name):
             else:
                 logger.info('Assigning to an active task for straggler mitigation.')
                 assignment_task = incomplete_tasks.order_by('?')[0]
-                worker.tasks.add(assignment_task)
 
     # return a url to the assignment
     if assignment_task:
+        # create the assignment if necessary
+        try:
+            logger.info('Looking up assignment...')
+            assignment = worker.assignments.get(
+                task=assignment_task, worker=worker)
+            if not assignment.retainer_session_task:
+                assignment.retainer_session_task = task
+                assignment.save()
+        except model_spec.assignment_model.DoesNotExist:
+            logger.info('No assignment found: creating new one.')
+            assignment_id = str(uuid.uuid4())
+            assignment = model_spec.assignment_model.objects.create(
+                assignment_id=assignment_id, worker=worker,
+                task=assignment_task,
+                retainer_session_task=task)
+
         if not assignment_task.group.work_start_time:
             assignment_task.group.work_start_time = timezone.now()
             assignment_task.group.save()
@@ -557,6 +544,7 @@ def assign_retainer_task(request, crowd_name):
                                 kwargs=url_args),
             'task_id': assignment_task.task_id,
         })
+        logger.info('Linking task to assignment.')
         return HttpResponse(response_data, content_type='application/json')
     else:
         logger.info('No tasks found!')
