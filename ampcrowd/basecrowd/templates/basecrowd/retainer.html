@@ -94,8 +94,10 @@ $(document).ready(function()
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-	{% if pool_status == "finished" or not is_accepted %}
+	{% if pool_status == "finished" %}
 	<h4 class="modal-title">Retainer Pool is Closed</h4>
+	{% elif not is_accepted %}
+        <h4 class="modal-title">Retainer Pool Instructions</h4>
 	{% else %}
 	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
 	  <span aria-hidden="true">&times;</span>
