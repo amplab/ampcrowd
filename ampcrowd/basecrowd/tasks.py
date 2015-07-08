@@ -217,6 +217,7 @@ def retire_workers():
                 for assignment in assignments:
                     logger.info("Proccessing assignment %s" % assignment)
                     worker = assignment.worker
+                    assignment.finished_at = timezone.now()
                     assignment.finish_waiting_session()
                     wait_time = assignment.time_waited
                     logger.info("%s waited %f seconds in this session." %
@@ -232,8 +233,16 @@ def retire_workers():
                     # Make sure the worker has completed the required number of tasks
                     group_config = json.loads(expired_task.group.global_config)
                     retain_config = group_config['retainer_pool']
-                    if (num_completed_tasks < retain_config['min_tasks_per_worker']
-                        and assignment.rejected_at is None):
+                    not_enough_tasks = num_completed_tasks < retain_config['min_tasks_per_worker']
+
+                    if (not_enough_tasks 
+                        and pool.finished_at is not None
+                        and (pool.finished_at - assignment.assigned_at).total_seconds 
+                             <= settings.WORKER_GRACE_PERIOD):
+                        logging.info('%s started %s seconds before pool closed--not rejecting.' %
+                                     (assignment, 
+                                      (pool.finished_at - assignment.assigned_at).total_seconds))
+                    elif not_enough_tasks and assignment.rejected_at is None:
                         logger.info("%s didn't complete enough tasks in the pool, "
                                     "rejecting work." % worker)
                         try:
@@ -264,7 +273,6 @@ def retire_workers():
                             assignment.amount_paid_bonus = bonus_amount
                             assignment.amount_paid_list = list_rate
                             assignment.paid_at = timezone.now()
-                            assignment.save()
                         except Exception, e:
                             logger.error('Error paying for %s' % assignment)
                             success = False
@@ -276,7 +284,7 @@ def retire_workers():
                         logger.info("%s already paid, no need to pay twice." % assignment)
                     else:
                         logger.info("%s was rejected or there was an error, not paying worker." % assignment)
-
+                    assignment.save()                            
 
                 # Mark the task as expired so we don't process it again.
                 if success:

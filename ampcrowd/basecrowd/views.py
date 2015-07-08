@@ -586,6 +586,7 @@ def finish_pool(request, crowd_name):
         return HttpResponse(json.dumps({'error': 'Invalid pool id'}))
 
     pool.status = RetainerPoolStatus.FINISHED
+    pool.finished_at = timezone.now()
     pool.save()
     logger.info("Retainer pool %s finished" % pool)
     return HttpResponse(json.dumps({'status': 'ok'}))

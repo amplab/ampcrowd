@@ -298,6 +298,9 @@ class AbstractRetainerPool(models.Model):
         default=timezone.now() -
         timedelta(seconds=settings.RETAINER_TASK_EXPIRATION_SECONDS))
 
+    # The time at which the pool was terminated
+    finished_at = models.DateTimeField(null=True)
+
     # Number of workers desired in the pool
     capacity = models.IntegerField()
 

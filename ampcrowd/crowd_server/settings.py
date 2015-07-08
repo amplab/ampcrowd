@@ -86,6 +86,10 @@ RETAINER_WORKER_TIMEOUT_SECONDS = 20
 # How frequently to re-run the worker retirement script.
 RETAINER_RETIRE_WORKERS_INTERVAL = 180 # seconds
 
+# How long before the end of a pool's life should workers who joined late
+# not be rejected for not completing enough tasks?
+WORKER_GRACE_PERIOD = 20 # seconds
+
 # Settings for AMQP /Celery
 ###########################
 
