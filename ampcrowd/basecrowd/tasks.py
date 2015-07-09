@@ -299,7 +299,7 @@ def retire_workers():
 
                             # payment is important--make it explicit when there's an issue
                             with open('PAYMENT_ERRORS.txt', 'a') as f:
-                                print >>f, str(assignment)
+                                print >>f, str(assignment), str(e)
                     elif assignment.paid_at is not None:
                         logger.info("%s already paid, no need to pay twice." % assignment)
                     else:
