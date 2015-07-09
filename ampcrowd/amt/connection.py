@@ -110,7 +110,7 @@ def expire_hit(task):
     try:
         conn.expire_hit(task.task_id)
     except MTurkRequestError as e:
-        logging.debug(traceback.format_exc())
+        logger.debug(traceback.format_exc())
         raise AMTException(
             "Couldn't expire HIT " + task.task_id + ": " + str(e)
         )
@@ -121,14 +121,29 @@ def disable_hit(task):
     try:
         conn.disable_hit(task.task_id)
     except MTurkRequestError as e:
-        logging.debug(traceback.format_exc())
+        logger.debug(traceback.format_exc())
         raise AMTException(
             "Couldn't delete HIT " + task.task_id + ": " + str(e)
         )
 
+def assignment_exists(assignment):
+    crowd_config = json.loads(assignment.task.group.crowd_config)
+    conn = get_amt_connection(crowd_config['sandbox'])
+    try:
+        a = conn.get_assignment(assignment.assignment_id)
+        return True
+    except MTurkRequestError as e:
+        logger.warn("Couldn't fetch assignment--it was probably returned.")
+        logger.warn("Error was %s" % str(e))
+        logger.debug(traceback.format_exc())
+        return False
+
 def reject_assignment(assignment, reason):
     crowd_config = json.loads(assignment.task.group.crowd_config)
     conn = get_amt_connection(crowd_config['sandbox'])
+    if not assignment_exists(assignment):
+        logger.warn("No assignment--not rejecting it.")
+
     try:
         conn.reject_assignment(assignment.assignment_id, reason)
     except MTurkRequestError as e:
@@ -139,6 +154,9 @@ def reject_assignment(assignment, reason):
 def bonus_worker(worker, assignment, amount, reason):
     crowd_config = json.loads(assignment.task.group.crowd_config)
     conn = get_amt_connection(crowd_config['sandbox'])
+    if not assignment_exists(assignment):
+        logger.warn("No assignment--not granting it a bonus.")
+
     try:
         conn.grant_bonus(worker.worker_id, assignment.assignment_id,
                          Price(amount=amount), reason)
