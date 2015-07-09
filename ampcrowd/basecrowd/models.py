@@ -134,13 +134,15 @@ class AbstractCrowdWorker(models.Model):
     # Has this worker read the retainer pool instructions?
     understands_retainer = models.BooleanField(default=False)
 
-    # Find the tasks the worker has completed during this session in
-    # the pool. Avoid double-counting tasks between sessions.
-    def completed_assignments_for_pool_session(self, session_task):
+    # Find tasks the worker was assigned during this pool session.
+    def assignments_for_pool_session(self, session_task):
         assert session_task.task_type == 'retainer'
-        return session_task.work_assignments.filter(
-            worker=self, 
-            finished_at__isnull=False)
+        return session_task.work_assignments.filter(worker=self)
+
+    # Find the tasks the worker completed during this pool session.
+    def completed_assignments_for_pool_session(self, session_task):
+        return (self.assignments_for_pool_session(session_task)
+                .filter(finished_at__isnull=False))
 
     def __unicode__(self):
         return "Worker %s" % self.worker_id
@@ -192,6 +194,9 @@ class AbstractCrowdWorkerAssignment(models.Model):
     # Fields related to paying the worker
     #####################################
 
+    # Was the worker's work cut off by the retainer pool closing?
+    pool_ended_mid_assignment = models.BooleanField(default=False)
+
     # The time the assignment received payment
     paid_at = models.DateTimeField(null=True)
 
@@ -215,14 +220,13 @@ class AbstractCrowdWorkerAssignment(models.Model):
         task_payment = task_rate * tasks_completed - list_rate
         total_bonus = waiting_payment + task_payment
 
-        message = ("You completed %d tasks and waited %.2f minutes on a retainer "
-                   "pool task. Thank you for your work!" % (tasks_completed,
-                                                            round(wait_minutes, 2)))
-        if logger:
-            logger.info("Paying %f x %f + %f x %d - %f = %f dollars to %s for %s" % (
-                    waiting_rate, wait_minutes, task_rate, tasks_completed,
-                    list_rate, total_bonus, self.worker, self))
-        return (round(total_bonus, 2), message)
+        worker_message = ("You completed %d tasks and waited %.2f minutes on a retainer "
+                          "pool task. Thank you for your work!" % (tasks_completed,
+                                                                   round(wait_minutes, 2)))
+        log_message = "Paying %f x %f + %f x %d - %f = %f dollars to %s for %s" % (
+            waiting_rate, wait_minutes, task_rate, tasks_completed,
+            list_rate, total_bonus, self.worker, self)
+        return (round(max(0.00, total_bonus), 2), worker_message, log_message)
 
 
     # Fields related to tracking the worker's wait time
@@ -248,6 +252,12 @@ class AbstractCrowdWorkerAssignment(models.Model):
         self.time_waited_total += self.time_waited_session
         self.time_waited_session = 0
         # Don't save: caller must save the object.
+
+    @property
+    def is_active(self):
+        time_cutoff = timezone.now() - timedelta(
+            seconds=settings.PING_TIMEOUT_SECONDS)
+        return self.last_ping and self.last_ping >= time_cutoff
 
     # The time the assignment took, in seconds
     @property

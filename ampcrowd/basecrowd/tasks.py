@@ -215,6 +215,10 @@ def retire_workers():
                 logger.info("%d workers on session %s" %
                             (assignments.count(), expired_task))
                 for assignment in assignments:
+                    if assignment.is_active:
+                        success = False # come back to this assignment later.
+                        continue # assignment hasn't been finished yet.
+
                     logger.info("Proccessing assignment %s" % assignment)
                     worker = assignment.worker
                     assignment.finished_at = timezone.now()
@@ -224,6 +228,8 @@ def retire_workers():
                                 (worker, wait_time))
 
                     # Count tasks the worker has completed during this session.
+                    work_assignments = worker.assignments_for_pool_session(expired_task)
+                    num_tasks = work_assignments.count()
                     completed_assignments = worker.completed_assignments_for_pool_session(
                         expired_task)
                     num_completed_tasks = completed_assignments.count()
@@ -231,20 +237,30 @@ def retire_workers():
                                                             num_completed_tasks))
 
                     # Make sure the worker has completed the required number of tasks
+                    reject = False
+                    pay = True
                     group_config = json.loads(expired_task.group.global_config)
                     retain_config = group_config['retainer_pool']
-                    not_enough_tasks = num_completed_tasks < retain_config['min_tasks_per_worker']
 
-                    if (not_enough_tasks 
-                        and pool.finished_at is not None
-                        and (pool.finished_at - assignment.assigned_at).total_seconds 
-                             <= settings.WORKER_GRACE_PERIOD):
-                        logging.info('%s started %s seconds before pool closed--not rejecting.' %
-                                     (assignment, 
-                                      (pool.finished_at - assignment.assigned_at).total_seconds))
-                    elif not_enough_tasks and assignment.rejected_at is None:
-                        logger.info("%s didn't complete enough tasks in the pool, "
-                                    "rejecting work." % worker)
+                    not_enough_tasks = (num_completed_tasks < retain_config['min_tasks_per_worker']
+                                        and num_tasks > 0)
+                    if not_enough_tasks:
+                        logger.info("%s was assigned tasks, but didn't compelete the minimum."
+                                     % worker)
+                        if assignment.pool_ended_mid_assignment:
+                            logger.info("work by %s was cut off by the end of the pool, "
+                                        "so not rejecteding." % worker)
+                        else:
+                            logger.info("Work wasn't cut off by pool, will reject.")
+                            reject = True
+                            pay = False
+                    else:
+                        logger.info("%s completed enough tasks or wasn't assigned any."
+                                    % worker)
+
+                    # Reject the work if they haven't
+                    if reject and assignment.rejected_at is None:
+                        logger.info("Rejecting %s." % assignment)
                         try:
                             crowd_interface.reject_task(
                                 assignment, worker, "You must complete at least %d "
@@ -261,18 +277,22 @@ def retire_workers():
                         logger.info("%s was valid, and doesn't need rejection." % assignment)
                             
                     # Pay the worker if we haven't already.
-                    if assignment.paid_at is None and assignment.rejected_at is None and success:
+                    if pay and assignment.paid_at is None and assignment.rejected_at is None:
                         waiting_rate = retain_config['waiting_rate']
                         per_task_rate = retain_config['task_rate']
                         list_rate = retain_config['list_rate']
-                        bonus_amount, message = assignment.compute_bonus(
+                        bonus_amount, message, log_msg = assignment.compute_bonus(
                             waiting_rate, per_task_rate, list_rate, logger)
+                        logger.info(log_msg)
                         try:
-                            crowd_interface.pay_worker_bonus(
-                                worker, assignment, bonus_amount, message)
-                            assignment.amount_paid_bonus = bonus_amount
-                            assignment.amount_paid_list = list_rate
-                            assignment.paid_at = timezone.now()
+                            if bonus_amount <= 0.01:
+                                logger.info("Bonus amount is too small--not giving bonus.")
+                            else:
+                                crowd_interface.pay_worker_bonus(
+                                    worker, assignment, bonus_amount, message)
+                                assignment.amount_paid_bonus = bonus_amount
+                                assignment.amount_paid_list = list_rate
+                                assignment.paid_at = timezone.now()
                         except Exception, e:
                             logger.error('Error paying for %s' % assignment)
                             success = False
@@ -283,7 +303,7 @@ def retire_workers():
                     elif assignment.paid_at is not None:
                         logger.info("%s already paid, no need to pay twice." % assignment)
                     else:
-                        logger.info("%s was rejected or there was an error, not paying worker." % assignment)
+                        logger.info("%s was rejected, not paying worker." % assignment)
                     assignment.save()                            
 
                 # Mark the task as expired so we don't process it again.

@@ -588,6 +588,13 @@ def finish_pool(request, crowd_name):
     except model_spec.retainer_pool_model.DoesNotExist:
         return HttpResponse(json.dumps({'error': 'Invalid pool id'}))
 
+    # Mark open sessions as interrupted so we don't penalize them unfairly.
+    (model_spec.assignment_model.objects
+     .filter(task__group__retainer_pool=pool,
+             task__task_type='retainer')
+     .filter(finished_at__isnull=True)
+     .update(pool_ended_mid_assignment=True))
+
     pool.status = RetainerPoolStatus.FINISHED
     pool.finished_at = timezone.now()
     pool.save()
