@@ -5,9 +5,10 @@ import json
 import urllib
 import urllib2
 
+from celery.utils.log import get_task_logger
 from django.conf import settings
 from django.utils import timezone
-from djcelery import celery
+from celery import shared_task
 
 from basecrowd.interface import CrowdRegistry
 from basecrowd.models import TaskGroupRetainerStatus
@@ -15,8 +16,10 @@ from basecrowd.models import RetainerPoolStatus
 from basecrowd.models import RetainerTask
 from quality_control.em import make_em_answer
 
+logger = get_task_logger(__name__)
+
 # Function for gathering results after a task gets enough votes from the crowd
-@celery.task
+@shared_task
 def gather_answer(current_task_id, model_spec):
     current_task = model_spec.task_model.objects.get(task_id=current_task_id)
     current_task.em_answer = make_em_answer(current_task, model_spec)
@@ -44,9 +47,8 @@ def submit_callback_answer(current_task):
 
 # Recruit for retainer pools by auto-posting tasks as necessary.
 # TODO: worry about concurrency if multiple of these run at once.
-@celery.task
+@shared_task
 def post_retainer_tasks():
-    logger = logging.getLogger(__name__)
 
     # Process each installed crowd.
     registry = CrowdRegistry.get_registry()
@@ -187,9 +189,8 @@ def post_retainer_tasks():
             except Exception, e:
                 logger.warning('Could not remove task %s: %s' % (session_task, str(e)))
 
-@celery.task
+@shared_task
 def retire_workers():
-    logger = logging.getLogger(__name__)
 
     # Process each installed crowd.
     registry = CrowdRegistry.get_registry()
