@@ -143,6 +143,7 @@ def reject_assignment(assignment, reason):
     conn = get_amt_connection(crowd_config['sandbox'])
     if not assignment_exists(assignment):
         logger.warn("No assignment--not rejecting it.")
+        return
 
     try:
         conn.reject_assignment(assignment.assignment_id, reason)
@@ -156,6 +157,7 @@ def bonus_worker(worker, assignment, amount, reason):
     conn = get_amt_connection(crowd_config['sandbox'])
     if not assignment_exists(assignment):
         logger.warn("No assignment--not granting it a bonus.")
+        return
 
     try:
         conn.grant_bonus(worker.worker_id, assignment.assignment_id,
