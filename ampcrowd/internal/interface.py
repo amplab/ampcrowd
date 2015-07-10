@@ -57,12 +57,13 @@ class InternalCrowdInterface(CrowdInterface):
             # No tasks that already have enough workers assigned.
             # "Enough" is the number of assignments for the task plus some SLACK
             # for workers who abandon their tasks.
-            .annotate(num_workers=Count('workers'))
+            .annotate(num_workers=Count('assignments'))
             .filter(Q(num_workers__lt=F('num_assignments') + SLACK)
 
                      # always let worker work on a task they've already been
                      # assigned but haven't completed.
-                     | Q(workers__worker_id=worker_id))
+                     | Q(assignments__worker_id=worker_id,
+                         assignments__finished_at__isnull=True))
 
             # No duplicates
             .distinct())
