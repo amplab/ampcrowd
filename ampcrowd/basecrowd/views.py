@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404, HttpResponseBadRequest
 from datetime import datetime
 from base64 import b64encode
 import pytz
@@ -22,7 +22,6 @@ from basecrowd.models import RetainerPoolStatus
 from basecrowd.tasks import gather_answer
 
 logger = logging.getLogger('crowd_server')
-
 
 @require_POST
 @csrf_exempt
@@ -205,7 +204,7 @@ def _get_assignment(request, crowd_name, interface, model_spec, context,
                         .get(task_id=context['task_id']))
         task_group = current_task.group
     except model_spec.task_model.DoesNotExist:
-        raise ValueError('Invalid task id: ' + context['task_id'])
+        return HttpResponseBadRequest('Invalid task id: ' + context['task_id'])
 
     # Save the information of this worker
     worker_id = context.get('worker_id')
@@ -384,6 +383,7 @@ def ping(request, crowd_name):
     worker = model_spec.worker_model.objects.get(worker_id=context['worker_id'])
     assignment = model_spec.assignment_model.objects.get(
         assignment_id=context['assignment_id'])
+    pool_status = task.group.retainer_pool.get_status_display()
     terminate_work = False
 
     # update waiting time
@@ -394,7 +394,7 @@ def ping(request, crowd_name):
         assignment.finish_waiting_session()
 
     # Task is waiting, increment wait time.
-    elif ping_type == 'waiting':
+    elif ping_type == 'waiting' and pool_status != 'finished':
         last_ping = assignment.last_ping
         time_since_last_ping = (now - last_ping).total_seconds()
         assignment.time_waited_session += time_since_last_ping
@@ -422,7 +422,7 @@ def ping(request, crowd_name):
         'wait_time': assignment.time_waited,
         'tasks_completed': worker.completed_assignments_for_pool_session(
             task).count(),
-        'pool_status': task.group.retainer_pool.get_status_display(),
+        'pool_status': pool_status,
         'waiting_rate': retainer_config['waiting_rate'],
         'per_task_rate': retainer_config['task_rate'],
         'min_required_tasks': retainer_config['min_tasks_per_worker'],

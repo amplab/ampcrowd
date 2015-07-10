@@ -21,7 +21,7 @@ SSL_MODE = os.environ.get('SSL', False) == "1"
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'formatters': {
         'simple': {
             'format': '[%(name)s:%(levelname)s] %(message)s'
@@ -31,7 +31,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': 'django.log',
+            'filename': os.path.join(BASE_DIR, 'django.log'),
         },
         'console': {
             'level': 'DEBUG',
@@ -40,13 +40,16 @@ LOGGING = {
         }
     },
     'loggers': {
-        'django': {
+        'django.request': {
             'level': 'DEBUG',
-            'propagate': True,
         },
         'crowd_server': {
             'level': 'DEBUG',
-        }
+        },
+        'celery.task': {
+            'level': 'DEBUG',
+            'handlers': ['file'],
+            },
     },
 }
 # Settings for production
@@ -55,7 +58,7 @@ if not DEV_MODE:
     ALLOWED_HOSTS = '*'
 
     # Dump all logs to the file 'django.log'
-    LOGGING['loggers']['django']['handlers'] = ['file']
+    LOGGING['loggers']['django.request']['handlers'] = ['file']
     LOGGING['loggers']['crowd_server']['handlers'] = ['file']
 else:
     ALLOWED_HOSTS = []
@@ -75,16 +78,16 @@ PING_TIMEOUT_SECONDS = 10
 RETAINER_TASK_EXPIRATION_SECONDS = 180
 
 # Number of tasks to post simultaneously for a single retainer slot.
-NUM_RETAINER_RECRUITMENT_TASKS = 5
+NUM_RETAINER_RECRUITMENT_TASKS = 10
 
 # How frequently to re-run the retainer task posting script.
 RETAINER_POST_TASKS_INTERVAL = 5 # seconds
 
 # How long until we decide that a worker has abandoned the pool.
-RETAINER_WORKER_TIMEOUT_SECONDS = 20
+RETAINER_WORKER_TIMEOUT_SECONDS = 10 * 60 # 10 minutes
 
 # How frequently to re-run the worker retirement script.
-RETAINER_RETIRE_WORKERS_INTERVAL = 180 # seconds
+RETAINER_RETIRE_WORKERS_INTERVAL = 10 * 60 # 10 minutes
 
 # How long before the end of a pool's life should workers who joined late
 # not be rejected for not completing enough tasks?
