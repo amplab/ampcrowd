@@ -15,8 +15,8 @@ foreground = debug or os.environ.get("FOREGROUND", False) == "1"
 daemon = not foreground
 
 # Logging
-accesslog = "access-gunicorn.log"
-errorlog = "error-gunicorn.log"
+accesslog = "/mnt/logs/access-gunicorn.log"
+errorlog = "/mnt/logs/error-gunicorn.log"
 loglevel = "debug"
 
 # SSL

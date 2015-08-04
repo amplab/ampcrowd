@@ -7,6 +7,7 @@ from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
+import numpy as np
 
 # Model for a group of tasks
 class TaskGroupRetainerStatus:
@@ -39,6 +40,9 @@ class AbstractCrowdTaskGroup(models.Model):
 
     # The number of tasks in this group that have been finished
     tasks_finished = models.IntegerField()
+
+    # The time when all tasks in the group completed
+    finished_at = models.DateTimeField(null=True)
 
     # The call back URL for sending results once complete
     callback_url = models.URLField()
@@ -84,7 +88,7 @@ class AbstractCrowdTask(models.Model):
     data = models.TextField()
 
     # Creation time
-    create_time = models.DateTimeField()
+    create_time = models.DateTimeField(default=timezone.now)
 
     # Unique identifier for the task
     task_id = models.CharField(primary_key=True, max_length=64)
@@ -100,6 +104,21 @@ class AbstractCrowdTask(models.Model):
 
     # Has the task received enough responses?
     is_complete = models.BooleanField(default=False)
+
+    # Time before celery starts
+    pre_celery = models.DateTimeField(null=True)
+
+    # Time before quality control starts
+    pre_em = models.DateTimeField(null=True)
+
+    # TIme after quality control finished
+    post_em = models.DateTimeField(null=True)
+
+    # Time after celery task is done
+    post_celery = models.DateTimeField(null=True)
+
+    # Did this task finish last in the group?
+    is_last = models.BooleanField(default=False)
 
     # Is this task a retainer task?
     is_retainer = models.BooleanField(default=False)
@@ -134,6 +153,12 @@ class AbstractCrowdWorker(models.Model):
     # Has this worker read the retainer pool instructions?
     understands_retainer = models.BooleanField(default=False)
 
+    # Worker's mean speed
+    mean_speed = models.FloatField(null=True)
+
+    # Worker's speed confidence 
+    mean_speed_ci = models.FloatField(null=True)
+
     # Find tasks the worker was assigned during this pool session.
     def assignments_for_pool_session(self, session_task):
         assert session_task.task_type == 'retainer'
@@ -143,6 +168,91 @@ class AbstractCrowdWorker(models.Model):
     def completed_assignments_for_pool_session(self, session_task):
         return (self.assignments_for_pool_session(session_task)
                 .filter(finished_at__isnull=False))
+
+    def compute_speed(self, desired_mean, model_spec, logger=None, alpha=1, **assignment_filter_kwargs):
+        if logger:
+            logger.info("Computing speed for %s" % self)
+
+        emp_speed, emp_std = self.mean_empirical_speed(desired_mean, **assignment_filter_kwargs) or (0.0, 0.0)
+        term_speed, num_tasks, num_terminated_tasks = self.mean_termination_speed(model_spec, alpha=alpha)
+        if num_tasks == 0:
+            if logger:
+                logger.info("Can't compute speed for %s: no available tasks" % self)
+            return
+        weight = float(num_terminated_tasks) / num_tasks
+        #weight = 0
+        final_speed = term_speed * weight + emp_speed * (1.0 - weight)
+        if logger:
+            logger.info('Computed speed for %s. Empirical speed: %f, termination speed: %f, '
+                        'termination ratio: %f (%f / %f), overall speed: %f' %
+                        (self, emp_speed, term_speed, weight, num_terminated_tasks, num_tasks, final_speed))
+        self.mean_speed = final_speed
+        self.mean_speed_ci = emp_std * weight
+        self.save()
+
+    def mean_termination_speed(self, model_spec, alpha=1):
+        # Count our total and terminated tasks
+        time_cutoff = timezone.now() - timedelta(minutes=10)
+        worker_assignments = (self.assignments
+                              .exclude(task__task_type='retainer')
+                              .filter(assigned_at__gt=time_cutoff))
+        num_tasks = worker_assignments.count()
+        if num_tasks == 0:
+            return 0.0, 0, 0
+
+        # Ignore last tasks when counting terminated tasks, because almost all last tasks are terminated.
+        terminated_assignments = worker_assignments.filter(terminated=True).exclude(task__is_last=True)
+        num_terminated_tasks = terminated_assignments.count()
+
+        # find the assignments that terminated this worker
+        worker_task_objs = model_spec.task_model.objects.filter(
+            assignments__assignment_id__in=terminated_assignments)
+
+        terminating_assignments = (model_spec.assignment_model.objects
+                                   .filter(task__in=worker_task_objs)
+                                   .filter(terminated=False)
+                                   .exclude(worker=self)
+                                   .filter(finished_at__isnull=False))
+
+        # Compute their average
+        if not terminating_assignments.exists():
+            return 0.0, num_tasks, num_terminated_tasks
+        average_fast_speed = np.mean([a.length for a in terminating_assignments])
+        
+        # Our estimated speed given terminated tasks
+        return (float(average_fast_speed * (num_tasks + alpha)) / (num_tasks + alpha - num_terminated_tasks),
+                num_tasks,
+                num_terminated_tasks)
+
+    # Compute the worker's average speed over all the work they've done
+    def mean_empirical_speed(self, desired_mean, **assignment_filter_kwargs):
+        now = timezone.now()
+        time_cutoff = now - timedelta(minutes=10)
+        running_cutoff = now - timedelta(seconds=desired_mean)
+        all_tasks = (self.assignments
+                     .exclude(
+                task__task_type='retainer')
+                     .filter(
+                models.Q(finished_at__isnull=False) |
+                models.Q(assigned_at__lte=running_cutoff)) # penalize long-running open assignments
+                     .filter(
+                models.Q(terminated=False) |
+                models.Q(assigned_at__lte=running_cutoff)) # penalize long-running open assignments
+                     .filter(**assignment_filter_kwargs))
+        all_tasks_recent = all_tasks.filter(
+            assigned_at__gte=time_cutoff) # windowed average
+        if all_tasks_recent.count() >= 4:
+            tasks_qset = all_tasks_recent
+        else:
+            tasks_qset = all_tasks.order_by('-assigned_at')[:10] # just take the most recent ones.
+        task_speeds = [t.length if t.finished_at else (now - t.assigned_at).total_seconds()
+                       for t in tasks_qset.iterator()]
+        num_tasks = len(task_speeds)
+        if num_tasks == 0:
+            return None
+
+        # Give the mean, a 95% CI, and the number of assignments completed
+        return (np.mean(task_speeds), 1.96 * np.std(task_speeds) / np.sqrt(num_tasks))
 
     def __unicode__(self):
         return "Worker %s" % self.worker_id
@@ -232,6 +342,12 @@ class AbstractCrowdWorkerAssignment(models.Model):
     # Fields related to tracking the worker's wait time
     ###################################################
 
+    # Is this worker on reserve in the pool (i.e., not receiving work)
+    on_reserve = models.BooleanField(default=False)
+
+    # Is this worker being let go from the pool?
+    worker_released_at = models.DateTimeField(null=True)
+
     # The last time someone working on this task pinged the server from a
     # retainer pool
     last_ping = models.DateTimeField(null=True)
@@ -317,11 +433,28 @@ class AbstractRetainerPool(models.Model):
     # External identifier for this pool (for re-use)
     external_id = models.CharField(max_length=200, unique=True)
 
+    # Number of times this pool has been churned
+    num_churns = models.IntegerField(default=0)
+
+    # Average worker speed in this pool
+    mean_speed = models.FloatField(null=True)
+    mean_speed_std = models.FloatField(null=True)
+
     def save(self, *args, **kwargs):
         models.Model.save(self, *args, **kwargs)
         if self.external_id == '':
             self.external_id = str(self.id)
             self.save()
+
+    # Current estimated cost of paying for all tasks/workers in the pool so far.
+    def cost(self, waiting_rate, task_rate, list_rate, assignment_model):
+        assignments = (
+            assignment_model.objects
+            .filter(
+                task__group__retainer_pool=self,
+                task__task_type='retainer'))
+        return sum([a.compute_bonus(waiting_rate, task_rate, list_rate)[0] + list_rate 
+                    for a in assignments.iterator()])
 
     def __unicode__(self):
         return "<Retainer Pool %s: %d active workers, capacity %d, status %s>" % (
@@ -334,7 +467,30 @@ class AbstractRetainerPool(models.Model):
             seconds=settings.PING_TIMEOUT_SECONDS)
         return self.workers.filter(assignments__task__task_type='retainer',
                                    assignments__task__group__retainer_pool=self,
-                                   assignments__last_ping__gte=time_cutoff)
+                                   assignments__last_ping__gte=time_cutoff,
+                                   assignments__on_reserve=False)
+
+    @property
+    def reserve_workers(self):
+        time_cutoff = timezone.now() - timedelta(
+            seconds=settings.PING_TIMEOUT_SECONDS)
+        return self.workers.filter(assignments__task__task_type='retainer',
+                                   assignments__task__group__retainer_pool=self,
+                                   assignments__last_ping__gte=time_cutoff,
+                                   assignments__on_reserve=True)
+
+
+    # Compute average speed of active workers
+    def compute_speed(self, logger=None):
+        worker_means = [w.mean_speed for w in self.active_workers if w.mean_speed is not None]
+        if len(worker_means) == 0:
+            if logger:
+                logger.info("No worker means: can't compute pool speed for %s" % self)
+            return
+
+        self.mean_speed = np.mean(worker_means)
+        self.mean_speed_std = np.std(worker_means)
+        self.save()
 
     def expired_tasks(self, task_model):
         time_cutoff = timezone.now() - timedelta(
@@ -375,7 +531,6 @@ class RetainerTask(models.Model):
 
     def __unicode__(self):
         return "Retainer Task %d" % self.id
-
 
 # Register a set of models as a new crowd.
 class CrowdModelSpecification(object):

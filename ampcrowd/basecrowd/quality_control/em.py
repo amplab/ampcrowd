@@ -14,12 +14,18 @@ def make_em_answer(task_obj, model_spec):
     label_set = []
 
     # Build up initial variables for em
-    responses = (model_spec.assignment_model.objects.filter(
-            task__task_type=task_obj.task_type, terminated=False,
-            finished_at__isnull=False)
-                 .select_related('worker'))
-    for response in responses:
-
+    all_responses = (model_spec.assignment_model.objects
+                     .filter(task__task_type=task_obj.task_type)
+                     .exclude(content__isnull=True)
+                     .exclude(content__exact='')
+                     .select_related('worker')
+                     .order_by('-finished_at'))[:800]
+    cur_responses = (task_obj.assignments
+                     .exclude(content__isnull=True)
+                     .exclude(content__exact='')
+                     .exclude(assignment_id__in=all_responses)
+                     .select_related('worker'))
+    for response in list(all_responses) + list(cur_responses):
         try:
             answer_list = json.loads(response.content)
         except Exception:
@@ -48,8 +54,8 @@ def make_em_answer(task_obj, model_spec):
 
     # Gather answer
     point_ids = json.loads(task_obj.assignments
-                           .filter(terminated=False,
-                                   finished_at__isnull=False)[0].content).keys()
+                           .exclude(content__isnull=True)
+                           .exclude(content__exact='')[0].content).keys()
     answer_label = {}
 
     for point_id in point_ids:

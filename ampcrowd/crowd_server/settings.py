@@ -13,7 +13,7 @@ from datetime import timedelta
 import os
 import json
 from urllib2 import urlopen
-import djcelery
+#import djcelery
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DEV_MODE = os.environ.get('DEVELOP', False) == "1"
@@ -89,15 +89,20 @@ RETAINER_WORKER_TIMEOUT_SECONDS = 10 * 60 # 10 minutes
 # How frequently to re-run the worker retirement script.
 RETAINER_RETIRE_WORKERS_INTERVAL = 10 * 60 # 10 minutes
 
-# How long before the end of a pool's life should workers who joined late
-# not be rejected for not completing enough tasks?
-WORKER_GRACE_PERIOD = 20 # seconds
+# How many reserve workers to recruit when doing churn.
+CHURN_RESERVE_SIZE = 3
+
+# How often to run the churn script
+CHURN_WORKERS_INTERVAL = 30 # seconds
+
+# How often to recompute worker speeds
+COMPUTE_SPEEDS_INTERVAL = 15 # seconds
 
 # Settings for AMQP /Celery
 ###########################
 
 # Celery Configuration
-djcelery.setup_loader()
+#djcelery.setup_loader()
 CELERYBEAT_SCHEDULE = {
     'post-retainer-tasks': {
         'task': 'basecrowd.tasks.post_retainer_tasks',
@@ -108,7 +113,35 @@ CELERYBEAT_SCHEDULE = {
         'task': 'basecrowd.tasks.retire_workers',
         'schedule': timedelta(seconds=RETAINER_RETIRE_WORKERS_INTERVAL),
         'args': (),
-    }
+    },
+    'churn-workers': {
+        'task': 'basecrowd.tasks.churn_workers',
+        'schedule': timedelta(seconds=CHURN_WORKERS_INTERVAL),
+        'args': (),
+    },
+    'compute-speeds': {
+        'task': 'basecrowd.tasks.compute_speeds',
+        'schedule': timedelta(seconds=COMPUTE_SPEEDS_INTERVAL),
+        'args': (),
+    },
+}
+
+# A high-priority queue for responses, and a low-priority queue for recruitment
+#CELERY_QUEUES = (
+#    Queue('default', Exchange('default'), routing_key='default'),
+#    Queue('responses', Exchange('responses'), routing_key='responses'),
+#    Queue('recruit', Exchange('recruit'), routing_key='recruit'),
+#)
+
+CELERY_ROUTES = {
+    'basecrowd.tasks.post_retainer_tasks': {'queue': 'recruit', 'routing_key': 'recruit'},
+    'basecrowd.tasks.retire_workers': {'queue': 'recruit', 'routing_key': 'recruit'},
+    'basecrowd.tasks.churn_workers': {'queue': 'recruit', 'routing_key': 'recruit'},
+    'basecrowd.tasks.compute_speeds': {'queue': 'recruit', 'routing_key': 'recruit'},
+    'basecrowd.tasks.compute_speed_stats': {'queue': 'recruit', 'routing_key': 'recruit'},
+    'basecrowd.tasks.compute_worker_speed': {'queue': 'recruit', 'routing_key': 'recruit'},
+    'basecrowd.tasks.compute_pool_speed': {'queue': 'recruit', 'routing_key': 'recruit'},
+    'basecrowd.tasks.gather_answer': {'queue': 'responses', 'routing_key': 'responses'},
 }
 
 # Set broker using hosts entry for 'rabbitmq'. This is set for Docker but can be set to alias

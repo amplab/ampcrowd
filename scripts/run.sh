@@ -12,10 +12,14 @@ rabbitmq-server -detached
 if [ "$1" == "-d" ] || [ "$2" == "-d" ]
 then
     export DEVELOP=1
-    python ampcrowd/manage.py celery worker -l DEBUG --beat &
+    python ampcrowd/manage.py celery worker -E -l DEBUG -n recruitWorker.%h -c 16 -Q recruit --beat &
+    python ampcrowd/manage.py celery worker -E -l DEBUG -n responseWorker.%h -c 16 -Q responses &
+    python ampcrowd/manage.py celery flower --port=8020 &
 else
     export DEVELOP=0
-    python ampcrowd/manage.py celery worker --beat --detach
+    python ampcrowd/manage.py celery worker -n recruitWorker.%h -E -c 16 -Q recruit --beat --detach
+    python ampcrowd/manage.py celery worker -n responseWorker.%h -E -c 16 -Q responses --detach
+    python ampcrowd/manage.py celery flower --port=8020 --detach
 fi
 
 # Enable SSL
