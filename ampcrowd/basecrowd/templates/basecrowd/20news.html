@@ -1,0 +1,32 @@
+{% extends base_template_name %}
+
+{% block default_instruction %} 
+
+  <p>Please read the following email text and pick the topic category to which it is
+    most relevant. <b>If you cannot tell, or the article text is empty</b>,
+    pick a random answer.</p>
+
+{% endblock %}
+
+{% block item_data %}
+
+  <code>{{point|safe}}</code>
+
+{% endblock %}
+
+{% block item_labels %}
+<div class="radio">
+  <label>
+    <input type="radio" id="{{id}}" name="{{forloop.counter}}" value="0.0"> 
+    Religon
+  </label>
+</div>
+<div class="radio">
+  <label>
+    <input type="radio" id="{{id}}" name="{{forloop.counter}}" value="1.0">
+    Vehicles
+  </label>
+</div>
+
+{% endblock %}
+                

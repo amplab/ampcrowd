@@ -63,10 +63,52 @@ class CrowdInterface(object):
         pass
 
     @staticmethod
+    def pay_worker_bonus(worker_object, task_object, bonus_amount, reason):
+        """ Pay an additional bonus to a worker.
+
+        `worker_object` is an instance of this crowd's worker model,
+        `task_object` is an instance of this crowd's task model, `bonus_amount`
+        is a float containing the amount of money to pay the worker in USD, and
+        `reason` is a string explaining why the bonus has been granted. This
+        method should attempt to pay the appropriate amount to the worker on the
+        remote platform, or do nothing if bonus payments aren't supported.
+        """
+        # Dummy implementation, do nothing
+        pass
+
+    @staticmethod
+    def reject_task(task_object, worker_object, reason):
+        """ Reject work done by a worker instead of paying them.
+
+        `task_object` is an instance of this crowd's task model, `worker_object`
+        is an instance of this crowd's worker model, and `reason` is a string
+        explaining why the work has been rejected. This method should reject the
+        assignment of this worker to this task on the remote crowd platform, or
+        do nothing if task rejection isn't supported.
+        """
+        # Dummy implementation, do nothing
+        pass
+
+    @staticmethod
+    def expire_tasks(task_objects):
+        """ Expire multiple tasks on the crowd platform.
+
+        Expiration means making the task no longer available for new workers to
+        accept. It does not necessarily imply deletion, though some crowd
+        platforms may choose to implement it that way.
+
+        `task_objects` is an iterable containing multiple instances of this
+        crowd's task_model. This method should not modify the objects
+        themselves, just handle the remote cleanup.
+        """
+        # Dummy implementation, do nothing
+        pass
+
+    @staticmethod
     def delete_tasks(task_objects):
         """ Delete multiple tasks on the crowd platform.
 
-        `task_objects` is a queryset containing multiple instances of the this
+        `task_objects` is a queryset containing multiple instances of this
         crowd's task_model. This method should not delete the objects
         themselves, just handle the remote cleanup.
         """
@@ -91,14 +133,15 @@ class CrowdInterface(object):
         Additionally, the keys 'content', 'group_context', and 'response_url'
         are reserved.
         """
-        # Base implementation, look for the fields in the GET dictionary.
-        return {'task_id': request.GET.get('task_id', None),
-                'worker_id': request.GET.get('worker_id', None),
-                'is_accepted': request.GET.get('is_accepted', True)}
+        # Base implementation, look for the fields in the request dictionary.
+        request_data = request.GET if request.method == 'GET' else request.POST
+        return {'task_id': request_data.get('task_id', None),
+                'worker_id': request_data.get('worker_id', None),
+                'is_accepted': request_data.get('is_accepted', True)}
 
     @staticmethod
     def get_response_context(request):
-        """ Extract response data from a post request.
+        """ Extract response data from a request.
 
         `request` is a Django HttpRequest object created when the crowd
         interface posts data from an assignment. This method should return a
@@ -111,12 +154,13 @@ class CrowdInterface(object):
         * `answers`: the assignment responses in json form (task-type dependent)
 
         """
-        # Base implementation, look for the fields in the POST dictionary
+        # Base implementation, look for the fields in the request dictionary
+        request_data = request.GET if request.method == 'GET' else request.POST
         return {
-            'task_id': request.POST.get('task_id', None),
-            'worker_id': request.POST.get('worker_id', None),
-            'assignment_id': request.POST.get('assignment_id', None),
-            'answers': request.POST.get('answers', None)
+            'task_id': request_data.get('task_id', None),
+            'worker_id': request_data.get('worker_id', None),
+            'assignment_id': request_data.get('assignment_id', None),
+            'answers': request_data.get('answers', None)
         }
 
     @staticmethod
@@ -134,10 +178,10 @@ class CrowdInterface(object):
         pass
 
     @staticmethod
-    def response_pre_save(response_object):
-        """ Process new response objects before they are saved to the DB.
+    def response_pre_save(assignment_object):
+        """ Process new responses before they are saved to the DB.
 
-        `response_object` will be an UNSAVED object of the `response_model`
+        `assignment_object` will be an UNSAVED object of the `assignment_model`
         class according to this crowd's model specification. Its worker,
         task, content, and assignment_id fields will be set according to the
         context provided by `get_response_context`. This method can modify the
@@ -199,6 +243,24 @@ class CrowdInterface(object):
                  'callback_url'],
                 ValueError())
 
+            # require retainer pool sub-options, if present
+            if 'retainer_pool' in configuration:
+                retainer_config = configuration['retainer_pool']
+                if retainer_config.get('create_pool', True):
+                    self.require_context(
+                        retainer_config,
+                        ['pool_size',
+                         'min_tasks_per_worker',
+                         'waiting_rate',
+                         'task_rate',
+                         'list_rate'],
+                        ValueError())
+                else:
+                    self.require_context(
+                        retainer_config,
+                        ['pool_id'],
+                        ValueError())
+
         except ValueError:
             return False
 
@@ -211,8 +273,6 @@ class CrowdInterface(object):
         # Do crowd-specific validation
         crowd_config = configuration.get(self.crowd_name, {})
         return self.validate_configuration(crowd_config)
-
-    # Get the appropriate model class
 
 
 class CrowdRegistry(object):
@@ -236,3 +296,8 @@ class CrowdRegistry(object):
         if not interface and not model_spec:
             raise ValueError("Invalid crowd name: " + crowd_name)
         return interface, model_spec
+
+    # Get the entire registry
+    @classmethod
+    def get_registry(cls):
+        return cls.registered_crowds

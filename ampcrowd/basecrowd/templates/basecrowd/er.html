@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block item_data %}
-    <table border="1" cellspacing="0" cellpadding="3">
+    <table class="table table-bordered table-hover" border="1" cellspacing="0" cellpadding="3">
         <thead>
         <tr>
             {% for field in group_context.fields %}
@@ -31,7 +31,17 @@
 
 {% block item_labels %}
 
-    <input type="radio" id = {{id}} name = "{{ forloop.counter }}" value="1.0"> They're the same <br/>
-    <input type="radio" id = {{id}} name = "{{ forloop.counter }}" value="0.0"> They're different <br/>
+    <div class="radio">
+      <label>
+	<input type="radio" id={{id}} name="{{ forloop.counter }}" value="1.0">
+	They're the same
+      </label>
+    </div>
+    <div class="radio">
+      <label>
+	<input type="radio" id={{id}} name="{{ forloop.counter }}" value="0.0">
+	They're different
+      </label>
+    </div>
 
 {% endblock %}

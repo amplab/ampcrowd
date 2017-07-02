@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 import httplib
+import json
+import logging
+import operator
 import socket
 import ssl
 import sys
-import json
 import urllib
 import urllib2
-import operator
-import logging
+import uuid
 
 from argparse import ArgumentParser
 
@@ -56,8 +57,21 @@ def send_request(data, crowds, num_requests, use_ssl):
                 print '.',
                 sys.stdout.flush()
 
+def add_retainer_config(req_data, retainer):
+    if retainer:
+        req_data['configuration']['retainer_pool'] = {
+            'create_pool': True,
+            'pool_id': str(uuid.uuid4()),
+            'pool_size': 1,
+            'min_tasks_per_worker': 2,
+            'waiting_rate': .02,
+            'task_rate': .02,
+            'list_rate': .04,
+        }
+    return req_data
+
 # Create batches of task
-def create_tasks(crowds, task_types, use_ssl):
+def create_tasks(crowds, task_types, use_ssl, retainer):
 
     # install custom opener
     if use_ssl:
@@ -77,9 +91,16 @@ def create_tasks(crowds, task_types, use_ssl):
         data['configuration']['task_batch_size'] = 3
         data['configuration']['num_assignments'] = num_assignments
         data['configuration']['callback_url'] = 'www.google.com'
-        data['configuration']['amt'] = {'sandbox' : True}
+        data['configuration']['amt'] = {
+            'sandbox' : True,
+            'title': 'This is a retainer HIT!',
+            'description': 'You will be on retainer',
+            'reward': 0.8,
+            'duration': 1000,
+        }
+        add_retainer_config(data, retainer)
 
-        data['group_id'] = 'test1'
+        data['group_id'] = 'sa ' + str(uuid.uuid4())
         data['group_context'] = {}  # Empty group contest for sentiment analysis
 
         # This configuration generates one task, with three tweets.
@@ -102,9 +123,16 @@ def create_tasks(crowds, task_types, use_ssl):
         data['configuration']['task_batch_size'] = 2
         data['configuration']['num_assignments'] = num_assignments
         data['configuration']['callback_url'] = 'www.google.com'
-        data['configuration']['amt'] = {'sandbox' : True}
+        data['configuration']['amt'] = {
+            'sandbox' : True,
+            'title': 'This is a retainer HIT!',
+            'description': 'You will be on retainer',
+            'reward': 0.8,
+            'duration': 1000,
+        }
+        add_retainer_config(data, retainer)
 
-        data['group_id'] = 'test2'
+        data['group_id'] = 'er ' + str(uuid.uuid4())
         data['group_context'] = {'fields' : ['price', 'location']}
 
         # This configuration generates one task with two pairs of records.
@@ -125,9 +153,16 @@ def create_tasks(crowds, task_types, use_ssl):
         data['configuration']['task_batch_size'] = 2
         data['configuration']['num_assignments'] = num_assignments
         data['configuration']['callback_url'] = 'www.google.com'
-        data['configuration']['amt'] = {'sandbox' : True}
+        data['configuration']['amt'] = {
+            'sandbox' : True,
+            'title': 'This is a retainer HIT!',
+            'description': 'You will be on retainer',
+            'reward': 0.8,
+            'duration': 1000,
+        }
+        add_retainer_config(data, retainer)
 
-        data['group_id'] = 'test3'
+        data['group_id'] = 'ft ' + str(uuid.uuid4())
         data['group_context'] = {'fields' : ['city', 'cuisine']}
 
         # This configuration generates one tasks with two pairs of records.
@@ -158,6 +193,9 @@ def parse_args():
                         help=('Number of assignments to require (one number '
                               'for each task type given with -t). Defaults to '
                               'one assignment for each task type.'))
+    parser.add_argument('--retainer', '-r', action='store_true',
+                        help=('Create tasks within a retainer pool for faster '
+                              'processing.'))
     parser.add_argument('--ssl', action='store_true',
                         help='Send requests to the crowd server over ssl.')
     args = parser.parse_args()
@@ -183,4 +221,4 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    create_tasks(args.crowds, args.types_map, args.ssl)
+    create_tasks(args.crowds, args.types_map, args.ssl, args.retainer)

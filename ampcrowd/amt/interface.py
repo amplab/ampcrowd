@@ -5,7 +5,8 @@ from datetime import datetime
 from django.conf import settings
 
 from basecrowd.interface import CrowdInterface
-from connection import create_hit, disable_hit, AMT_NO_ASSIGNMENT_ID
+from connection import create_hit, disable_hit, reject_assignment, bonus_worker, expire_hit
+from connection import AMT_NO_ASSIGNMENT_ID
 from models import Request
 
 
@@ -16,7 +17,7 @@ class AMTCrowdInterface(CrowdInterface):
         # Validate the configuration specific to amt
         try:
             CrowdInterface.require_context(
-                configuration, 
+                configuration,
                 ['sandbox'],
                 ValueError())
 
@@ -33,6 +34,19 @@ class AMTCrowdInterface(CrowdInterface):
         return create_hit(additional_options)
 
     @staticmethod
+    def pay_worker_bonus(worker_object, assignment_object, bonus_amount, reason):
+        bonus_worker(worker_object, assignment_object, bonus_amount, reason)
+
+    @staticmethod
+    def reject_task(assignment_object, worker_object, reason):
+        reject_assignment(assignment_object, reason)
+
+    @staticmethod
+    def expire_tasks(task_objects):
+        for task in task_objects:
+            expire_hit(task)
+
+    @staticmethod
     def delete_tasks(task_objects):
         # Use the boto API to delete the HITs
         for task in task_objects:
@@ -40,15 +54,17 @@ class AMTCrowdInterface(CrowdInterface):
 
     @staticmethod
     def get_assignment_context(request):
+        request_data = request.GET if request.method == 'GET' else request.POST
+
         # parse information from AMT in the URL
         context = {
-            'task_id': request.GET.get('hitId'),
-            'worker_id': request.GET.get('workerId'),
-            'submit_url': request.GET.get('turkSubmitTo'),
+            'task_id': request_data.get('hitId'),
+            'worker_id': request_data.get('workerId'),
+            'submit_url': request_data.get('turkSubmitTo'),
         }
 
         # check for requests for a preview of the task
-        assignment_id = request.GET.get('assignmentId')
+        assignment_id = request_data.get('assignmentId')
         if assignment_id == AMT_NO_ASSIGNMENT_ID:
             assignment_id = None
             is_accepted = False
@@ -65,16 +81,6 @@ class AMTCrowdInterface(CrowdInterface):
                 recv_time=pytz.utc.localize(datetime.now()))
 
         return context
-
-    @staticmethod
-    def get_response_context(request):
-        # Extract data from the request
-        return {
-            'answers': request.POST.get('answers'),
-            'task_id': request.POST.get('HITId'),
-            'worker_id': request.POST.get('workerId'),
-            'assignment_id': request.POST.get('assignmentId')
-        }
 
     def get_frontend_submit_url(self, crowd_config):
         return (settings.POST_BACK_AMT_SANDBOX

@@ -1,10 +1,5 @@
 {% extends "basecrowd/base.html" %}
 
-{% block jslibraries %}
-    {{ block.super }}
-    <script type='text/javascript' src='https://s3.amazonaws.com/mturk-public/externalHIT_v1.js'></script>
-{% endblock jslibraries %}
-
 {% block get_submit_context_func %}
             function get_submit_context(urlParamStrings)
             {
@@ -24,15 +19,10 @@
                 }
 
                 return {
-                    HITId: HITId,
-                    workerId: workerId,
-                    assignmentId: assignmentId
+                    task_id: HITId,
+                    worker_id: workerId,
+                    assignment_id: assignmentId
                 }
 
             }
 {% endblock get_submit_context_func %}
-
-
-{% block inline_js %}
-    <script language="Javascript">turkSetAssignmentID();</script>
-{% endblock inline_js %}

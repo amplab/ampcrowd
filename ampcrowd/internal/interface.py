@@ -16,8 +16,11 @@ class InternalCrowdInterface(CrowdInterface):
     @staticmethod
     def get_assignment_context(request):
         """ Get a random task of the specified type."""
-        worker_id = request.GET.get('worker_id')
-        task_type = request.GET.get('task_type')
+
+        # Extract data from the request
+        request_data = request.GET if request.method == 'GET' else request.POST
+        worker_id = request_data.get('worker_id')
+        task_type = request_data.get('task_type')
         eligible_tasks = (InternalCrowdInterface.get_eligible_tasks(worker_id)
                           .filter(task_type=task_type)
                           .order_by('create_time'))
@@ -49,17 +52,18 @@ class InternalCrowdInterface(CrowdInterface):
             .filter(is_complete=False)
 
             # No tasks the worker has already worked on.
-            .exclude(responses__worker__worker_id=worker_id)
+            .exclude(assignments__worker__worker_id=worker_id)
 
             # No tasks that already have enough workers assigned.
             # "Enough" is the number of assignments for the task plus some SLACK
             # for workers who abandon their tasks.
-            .annotate(num_workers=Count('workers'))
+            .annotate(num_workers=Count('assignments'))
             .filter(Q(num_workers__lt=F('num_assignments') + SLACK)
 
                      # always let worker work on a task they've already been
                      # assigned but haven't completed.
-                     | Q(workers__worker_id=worker_id))
+                     | Q(assignments__worker_id=worker_id,
+                         assignments__finished_at__isnull=True))
 
             # No duplicates
             .distinct())

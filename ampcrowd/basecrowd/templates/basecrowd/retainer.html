@@ -1,0 +1,230 @@
+{% extends base_template_name %}
+<!-- Add HTML to display an interface to the crowd for completing tasks of a new type.
+
+This template will display a single-screen interface to the crowd for gathering labels of one or more items of the same
+task type. To define your task type, copy this template, then fill in the blocks below.
+
+Note: Twitter Bootstrap CSS classes will be available for styling.
+
+-->
+
+<!-- Load the retainer library -->
+{% block jslibraries %}
+    {{ block.super }}
+    <script type='text/javascript' src='/static/basecrowd/js/retainer.js'></script>
+{% endblock jslibraries %}
+
+<!-- Don't include javascript we don't need. -->
+{% block validate_func %}
+{% endblock validate_func %}
+
+{% block initialize_form_validation_func %}
+{% endblock initialize_form_validation_func %}
+
+<!-- Initialization -->
+{% block handle_is_accepted_func %}
+function start_work()
+{
+    // Set up retainer tracking
+    PING_ENDPOINT = "/crowds/{{ crowd_name }}/retainer/ping/";
+    WORK_ENDPOINT = "/crowds/{{ crowd_name }}/assignments/retainer/";
+    Retainer.init(PING_ENDPOINT, WORK_ENDPOINT);
+
+    // Set up exit button
+    $("#exitButton").click(function(event) {
+        event.preventDefault();
+        var data = prepare_submit_data();
+        submit_to_frontend(data);
+    });
+}
+
+function handle_is_accepted()
+{
+    var is_accepted = {{ is_accepted|yesno:"true,false" }};
+    var understands_retainer = {{ understands_retainer|yesno:"true,false" }};
+    if (is_accepted)
+    {
+        if (!understands_retainer)
+        {
+            // Pop up the instructions
+            var modal = $('#instructionsModal');
+            modal.on('hidden.bs.modal', function(e) {
+                $.post("/crowds/{{ crowd_name }}/workers/{{ worker_id }}/understands_retainer");
+                start_work();
+                modal.off('hidden.bs.modal');
+            });
+            modal.modal('show');
+        }
+
+        else {
+            start_work();
+        }
+    }
+    else
+    {
+        // Show the instructions
+        $('#instructionsModal').modal({
+            keyboard: false,
+            show: true,
+            backdrop: "static"
+        });
+        console.log("Showed Instructions!");
+    }
+}
+{% endblock handle_is_accepted_func %}
+
+{% block ready_func %}
+$(document).ready(function()
+{
+    handle_is_accepted();
+    $('#instructionsButton').click(function(e) {
+        $('#instructionsModal').modal('show');
+    });
+});
+{% endblock ready_func %}
+
+<!-- Layout and Content -->
+
+
+<!-- Override standard layout -->
+{% block body %}
+
+<!-- Modal w/ task instructions -->
+<div class="modal fade" id="instructionsModal">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+	{% if pool_status == "finished" %}
+	<h4 class="modal-title">Retainer Pool is Closed</h4>
+	{% elif not is_accepted %}
+        <h4 class="modal-title">Retainer Pool Instructions</h4>
+	{% else %}
+	<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	  <span aria-hidden="true">&times;</span>
+	</button>
+        <h4 class="modal-title">Retainer Pool Instructions</h4>
+	{% endif %}
+      </div>
+      <div class="modal-body">
+	{% if pool_status == "finished" %}
+	<p><b>This Retainer Pool has been closed</b>, and this assignment is no
+	  longer available. <b>DO NOT ACCEPT THIS TASK</b> or it will be rejected.
+	  Instead, <b>please look for other retainer pool tasks that are still 
+	    open.</b></p>
+	{% else %}
+	<p>This task is a <b>Retainer Pool Task</b>, which means it works a
+	  bit differently from standard tasks. In particular:</p>
+	<ol>
+	  <li><p><b>You will be paid a bonus of ${{ waiting_rate }} per minute
+		for waiting</b> on this page until work becomes available.
+	  </p></li>
+	  <li><p>In return, <b>you will be expected to begin work quickly when
+		work</b> is available. Depending on your browser, you will be
+	      alerted of new work in different ways, such as a pop-up or a
+	      flashing tab. Since you will be able to see the alert from other
+	      tabs, <b>you are free to take other tasks while you wait.</b></p>
+	  </li>
+	  <li><p>In addition to your waiting bonus, <b>you will be paid
+		${{ per_task_rate }} per judgment you complete</b> in the interface.
+	    <p></li>
+	  <li><p><b>You must complete a minimum of {{ min_required_tasks }} judgments before
+		leaving the pool or this task will be rejected.</b> If not enough work is
+	      available for you to complete {{ min_required_tasks }} tasks, you will be paid
+	      for your waiting time and the tasks you did complete, and will not be
+	      rejected.</b><p></li>
+	  <li><p>You can continue working until there are no more available
+	      tasks in the pool, but may also choose to leave at any time. If
+	      you choose to leave, <b>you must press the 'Finish Working' button
+	      </b>, or the task will appear abandoned.
+	      <b>Do not close this tab without pressing the button first.</b>
+	      </p></li>
+	  <li><p><b>Retainer Pools are Experimental</b>, and as a result you may
+	      observe bugs or unexpected behavior while doing the task. Please let
+	      us know if this occurs, and we will try to be responsive and resolve
+	      the issue as quickly as possible.</p>
+	</ol>
+	{% endif %}
+      </div>
+      <div class="modal-footer">
+	{% if pool_status != "finished" %}
+	{% if is_accepted %}
+        <button type="button" class="btn btn-default" data-dismiss="modal">Get to work!</button>
+	{% else %}
+        <button type="button" class="btn btn-default" disabled="disabled">Accept this task to begin work!</button>
+	{% endif %}
+	{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="container task-container">
+
+  <!-- Retainer pool status -->
+  <div class="row">
+    <div class="col-xs-2 col-md-2">
+      <p class="text-left"><big><em>Retainer Pool.</big></em></p>
+    </div>
+    <div class="col-xs-6 col-md-6">
+      <p class="text-center">
+	<em>Wait Time: <span id="waitTime">{{ wait_time|default:"0.00" }}</span> seconds x ${{ waiting_rate }}/minute = $<span id="waitPayment">0.00</span>.<br/>
+	Tasks Completed: <span id="tasksCompleted">{{ tasks_completed|default:"0" }}</span> x ${{ per_task_rate }}/task = $<span id="taskPayment">0.00</span>.</em>
+      </p>
+    </div>
+
+
+    <div class="col-xs-4 col-md-4">
+
+      <!-- Top of form to stop working -->
+      {% if is_accepted %}
+      <form id="submitForm" action="">
+	<input type="hidden" value="{{ assignment_id }}" name="assignmentId" />
+	<input type="hidden" value="0" name="dummyData" />
+      {% endif %}
+
+	<!-- Button to show instructions modal -->
+	<p class="text-right">
+	  <input type="button" id="instructionsButton" class="btn btn-default btn-sm" value="View Retainer Instructions"/>
+
+      <!-- Button to stop working -->
+      {% if is_accepted %}
+	  <input type="submit" id="exitButton" class="btn btn-default btn-sm" value="Finish Working" />
+      {% endif %}
+	</p>
+
+      <!-- Bottom of form to stop working -->
+      {% if is_accepted %}
+      </form>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <div class="row">
+
+    <!-- Looking for work -->
+    <div class="well col-xs-12 col-md-12" id="waitingDiv">
+      {% if is_accepted %}
+      <h1>Waiting for next task...</h1>
+      <p><big><em>Please keep this page open until the task begins. To earn your
+	    pay for waiting, you must be available as soon as you are alerted.
+	    Depending on your browser you will be alerted in different ways, but
+	    keep an eye out for a pop-up or flashing tab in your browser. Since
+	    you will be able to see the alert from other tabs, you are free to
+	    take other tasks while you wait,
+	    <b>as long as you do NOT close this tab</b>, as that will remove you
+	    from the waiting area.</em></big></p>
+
+      {% else %}
+      <h2 class="text-center">Accept this task to begin work!</h2>
+      {% endif %}
+    </div>
+
+    <!-- Task iframe, hidden to start -->
+    <div class="col-xs-12 col-md-12">
+      <iframe src="about:blank" id="taskFrame" frameborder="0" style="display:none;width:100%;"></iframe>
+    </div>
+
+  </div>
+</section>
+{% endblock body %}

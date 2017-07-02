@@ -1,0 +1,50 @@
+{% extends base_template_name %}
+
+{% block default_instruction %} 
+
+<p>Please select the category (airplane or bird) that best matches the object shown in the image below. 
+If it is unclear, pick the category that you personally think best matches.
+</p>
+
+{% endblock %}
+
+{% block item_data %}
+
+  <div class="cifarimg" id="img{{id}}"></div>
+  <style>
+    .cifarimg {
+      width: 160px;
+      height: 160px;
+      background-size: 160px;
+      margin: 10px;
+    }
+  </style>
+
+
+  <script language="javascript">
+    $(function() {
+      var point = {fname:'{{point.fname}}', top:{{point.top}} };
+      $("#img{{id}}").css("background-image", "url("+point.fname+")");
+      $("#img{{id}}").css("background-position-y", -(point.top * 5));
+    });
+  </script>
+
+{% endblock %}
+
+{% block item_labels %}
+
+<div class="radio">
+  <label>
+    <input type="radio" id="{{id}}" name="{{forloop.counter}}" value="-1.0">
+    Airplane
+  </label>
+</div>
+<div class="radio">
+  <label>
+    <input type="radio" id="{{id}}" name="{{forloop.counter}}" value="1.0">
+    Bird
+  </label>
+</div>
+  
+{% endblock %}
+                

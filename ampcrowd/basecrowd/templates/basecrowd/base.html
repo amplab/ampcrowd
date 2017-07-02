@@ -3,6 +3,7 @@
     {% block jslibraries %}
         <script type='text/javascript' src='//code.jquery.com/jquery-1.11.0.js'></script>
         <script type='text/javascript' src='https://ajax.aspnetcdn.com/ajax/jquery.validate/1.13.0/jquery.validate.min.js'></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
     {% endblock jslibraries %}
 
     {% block customjs %}
@@ -36,11 +37,23 @@
             {% block get_submit_context_func %}
                 function get_submit_context(urlParamStrings)
                 {
-                    // dummy implementation: no context.
+                    // dummy implementation: no custom context.
                     return {}
 
                 }
             {% endblock get_submit_context_func %}
+
+            {% block get_submit_context_default_func %}
+	        function get_submit_context_default()
+	        {
+	            return {
+	                task_id: "{{ task_id }}",
+	                worker_id: "{{ worker_id }}",
+	                assignment_id: "{{ assignment_id }}"
+	            };
+	        }
+            {% endblock get_submit_context_default_func %}
+
 
             {% block prepare_submit_data_func %}
                 function prepare_submit_data()
@@ -49,9 +62,18 @@
                     var answers = build_answer_data();
 
                     // get additional context from the URL or page
+	            // default context
+	            var data = get_submit_context_default();
+
+	            // crowd-specific context (can override defaults)
                     var paramstr = window.location.search.substring(1);
                     var parampairs = paramstr.split("&");
-                    var data = get_submit_context(parampairs);
+                    var custom_data = get_submit_context(parampairs);
+	            for (var key in custom_data) {
+	                if (custom_data.hasOwnProperty(key) && custom_data[key] != undefined)
+	                    data[key] = custom_data[key];
+	            }
+
                     data.answers = JSON.stringify(answers);
                     return data;
                 }
@@ -125,10 +147,10 @@
                     {
                         event.preventDefault();
                         if (!validate_answers()) return;
-                        var data = prepare_submit_data();
-                        $.when(submit_to_backend(data)).then(function(data, status)
+                        var submit_data = prepare_submit_data();
+                        $.when(submit_to_backend(submit_data)).then(function(data, status)
                         {
-                            submit_to_frontend(data);
+                            submit_to_frontend(submit_data);
                         });
                     });
 
@@ -143,7 +165,7 @@
     {% endblock customjs %}
 
     {% block css_includes %}
-        <link href="https://s3.amazonaws.com/mturk-public/bs30/css/bootstrap.min.css" rel="stylesheet" />
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
     {%  endblock css_includes %}
 
     {% block custom_css %}
@@ -165,11 +187,12 @@
     {% endblock misc_head_tags %}
 </head>
 
+{% block body %}
 <body>
 {% block form_tag %}
     <form method="post" id="submitForm" action="">
 {% endblock form_tag %}
-<input type="hidden" value="" name="assignmentId" id="assignmentId" />
+<input type="hidden" value="{{ assignment_id }}" name="assignmentId" />
 <section class="container task-container" id="DataCollection">
     <div class="row col-xs-12 col-md-12">
 
@@ -245,4 +268,5 @@
 {% block inline_js %}
 {% endblock inline_js %}
 </body>
+{% endblock body %}
 </html>

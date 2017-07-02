@@ -14,24 +14,36 @@ def make_em_answer(task_obj, model_spec):
     label_set = []
 
     # Build up initial variables for em
-    responses = model_spec.response_model.objects.filter(
-        task__task_type=task_obj.task_type)
-    for response in responses:
-
+    all_responses = (model_spec.assignment_model.objects
+                     .filter(task__task_type=task_obj.task_type)
+                     .exclude(content__isnull=True)
+                     .exclude(content__exact='')
+                     .select_related('worker')
+                     .order_by('-finished_at'))[:800]
+    cur_responses = (task_obj.assignments
+                     .exclude(content__isnull=True)
+                     .exclude(content__exact='')
+                     .exclude(assignment_id__in=all_responses)
+                     .select_related('worker'))
+    for response in list(all_responses) + list(cur_responses):
+        try:
             answer_list = json.loads(response.content)
-            for point_id in answer_list.keys():
+        except Exception:
+            continue
 
-                worker_id = response.worker.worker_id
-                unique_id = point_id
-                current_label = answer_list[point_id]
+        for point_id in answer_list.keys():
 
-                example_to_worker_label.setdefault(unique_id, []).append(
-                    (worker_id, current_label))
-                worker_to_example_label.setdefault(worker_id, []).append(
-                    (unique_id, current_label))
+            worker_id = response.worker.worker_id
+            unique_id = point_id
+            current_label = answer_list[point_id]
 
-                if current_label not in label_set :
-                    label_set.append(current_label)
+            example_to_worker_label.setdefault(unique_id, []).append(
+                (worker_id, current_label))
+            worker_to_example_label.setdefault(worker_id, []).append(
+                (unique_id, current_label))
+
+            if current_label not in label_set :
+                label_set.append(current_label)
 
     # EM algorithm
     iterations = 20
@@ -41,7 +53,9 @@ def make_em_answer(task_obj, model_spec):
                    label_set).ExpectationMaximization(iterations)
 
     # Gather answer
-    point_ids = json.loads(task_obj.responses.all()[0].content).keys()
+    point_ids = json.loads(task_obj.assignments
+                           .exclude(content__isnull=True)
+                           .exclude(content__exact='')[0].content).keys()
     answer_label = {}
 
     for point_id in point_ids:
