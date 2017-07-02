@@ -37,6 +37,42 @@ tasks with the server and begin processing them.
       [the list of available crowds](available_crowds.html) for the
       configuration keys supported by specific crowds.
 
+    * **retainer_pool**: A json dictionary with configuration related to running
+      a low-latency retainer pool. If present, the new task group will be run on
+      a pool of retained crowd workers. Possible keys in this dictionary are:
+
+      * **pool_id**: An external id to associate with this pool.
+
+      * **create_pool**: If `True`, recruit a new pool for this task group. If
+        `False`, send these tasks to the pool with id specified in **pool_id**.
+
+      * **pool_size**: The number of workers to hire on retainer for this pool.
+
+      * **waiting_rate**: Amount to pay workers to wait in the pool when work is
+        unavailable. Rate is in dollars / minute.
+
+      * **task_rate**: Amount to pay workers per task they complete. Rate is in
+        dollars.
+
+      * **list_rate**: Amount to list the recruitment task for, in dollars.
+        Workers who accept the recruitment task and join the pool will be paid
+        at least this much.
+
+      * **min_tasks_per_worker**: Minimum number of tasks a worker must commit
+        to completing when they join the pool.
+
+  * **experimental**: A json dictionary with configuration related to
+    experimental techniques from the literature. See
+    [the research paper](http://dl.acm.org/citation.cfm?id=2856331) for details
+    on the techniques. Possible keys are:
+
+    * **churn_threshold**: Threshold in seconds/task for perform pool
+      maintenance. Workers with an average speed above the threshold will be
+      periodically replaced by new workers.
+
+    * **mitigate_stragglers**: If `True`, turn on straggler mitigation to
+      accelerate task processing by sending tasks to multiple workers.
+
   * **group_id**: A unique identifier for this group of points.
 
   * **group_context**: A json dictionary that represents the context that is
